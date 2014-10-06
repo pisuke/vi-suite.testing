@@ -1092,9 +1092,7 @@ class NODE_OT_Shadow(bpy.types.Operator):
                 bm.from_mesh(o.data)
                 bm.transform(o.matrix_world)
                 oresm = bpy.data.meshes.new(o.name+"res") 
-
                 ores = bpy.data.objects.new(o.name+"res", oresm)
-#                ores = bpy.data.objects.new('{}res'.format(ob.name), oresm)
                 scene.objects.link(ores)
                 selobj(scene, ores)
                 for matname in ['shad#{}'.format(i) for i in range(20)]:
@@ -1102,11 +1100,10 @@ class NODE_OT_Shadow(bpy.types.Operator):
                         bpy.ops.object.material_slot_add()
                         ores.material_slots[-1].material = bpy.data.materials[matname]
                     
-
                 for f in [f for f in bm.faces if not o.data.materials[f.material_index].vi_shadow]:
                     bm.faces.remove(f)
                 
-                obavres, shadfaces, shadcentres = [0] * (fdiff), [[] for f in range(fdiff)], [[] for f in range(fdiff)]
+                obavres, shadcentres = [0] * (fdiff), [[] for f in range(fdiff)]
                 [obsumarea, obmaxres, obminres] = [[0 for f in range(fdiff)] for x in range(3)]
 
                 for findex, frame in enumerate(range(scene.fs, scene.fe + 1)):
@@ -1115,8 +1112,6 @@ class NODE_OT_Shadow(bpy.types.Operator):
                     obsumarea[findex] = sum([f.calc_area() for f in bm.faces])
 
                     if simnode.cpoint == '0':  
-                        
-
                         bm.faces.layers.float.new('shad{}'.format(frame))
                         shadres = bm.faces.layers.float('shad{}'.format(frame))
                     
@@ -1126,19 +1121,9 @@ class NODE_OT_Shadow(bpy.types.Operator):
                             for direc in direcs:
                                 if bpy.data.scenes[0].ray_cast(f.calc_center(), f.calc_center() + 10000*direc)[0]:
                                     f[shadres] -= 100/len(direcs)
-#                                    shadcentres[findex][fa][2] -= 1/(len(direcs))
-                            
-                            #if shadcentres[findex][fa][2] < 1:
-#                                for li in face.loop_indices:
-#                                    vertexColour.data[li].color = [shadcentres[findex][fa][2]]*3
-#                            obavres[findex] += face.area * 100 * (shadcentres[findex][fa][2])/obsumarea[findex]
+
                         vals = array([f[shadres] for f in bm.faces])
-#                        bins = array([5*i for i in range(1, 20)])
-#                        nmatis = digitize(vals, bins)  
-#                        for fi, f in enumerate(bm.faces):
-#                            f.material_index = nmatis[fi]
-#                        bm.to_mesh(ob.data)
-#                        [ores.data.polygons[f.index].keyframe_insert('material_index', frame=frame) for f in bm.faces]  
+ 
                     else:
                         bm.verts.layers.float.new('shad{}'.format(frame))
                         shadres = bm.verts.layers.float['shad{}'.format(frame)]
@@ -1155,41 +1140,13 @@ class NODE_OT_Shadow(bpy.types.Operator):
                         f.material_index = nmatis[fi]
                     bm.to_mesh(ores.data)
                     [f.keyframe_insert('material_index', frame=frame) for f in ores.data.polygons] 
-                    
-                        
-#                        csfvi = [item for sublist in [face.vertices[:] for face in ob.data.polygons if ob.data.materials[face.material_index].vi_shadow] for item in sublist]
-#                        ob['cverts'] = [v for (i,v) in enumerate(csfvi) if v not in csfvi[0:i]]
-#                        shadverts = [ob.data.vertices[i] for i in ob['cverts']]
-#                        shadcentres[findex] = [[obm*mathutils.Vector((v.co)) + 0.05*v.normal, obm*mathutils.Vector((v.co)), 1] for v in shadverts]
-#                        cvtup = tuple(ob['cverts'])
-                        
-#                        for vi, v in enumerate(bm.verts):
-#                            for direc in direcs:
-#                                if bpy.data.scenes[0].ray_cast(shadcentres[findex][vi][0], shadcentres[findex][vi][1] + 10000*direc)[0]:
-#                                    v[shadres] -= 1/(len(direcs))
-#                            
-#                            for fa, face in enumerate(shadfaces):
-#                                for li in face.loop_indices:
-#                                    v = ob.data.loops[li].vertex_index
-#                                    if v in cvtup:
-#                                        col_i = cvtup.index(v)                                        
-#                                        if shadcentres[findex][col_i][2] < 1:
-#                                            vertexColour.data[li].color = [shadcentres[findex][col_i][2]]*3
                     ores['omax'][findex] = max([v[shadres] for v in bm.verts]) if simnode.cpoint == '1' else max([f[shadres] for v in bm.faces]) 
                     ores['omax'][findex] = min([v[shadres] for v in bm.verts]) if simnode.cpoint == '1' else min([f[shadres] for v in bm.faces]) 
                     ores['oave'][findex] = sum(v[shadres])/len(bm.verts) if simnode.cpoint == '1' else sum(f[shadres])/len(bm.faces)
                     
-#                    obmaxres[findex] = 100* (max([sh[2] for sh in shadcentres[findex]]))
-#                    obminres[findex] = 100* (min([sh[2] for sh in shadcentres[findex]]))
-
                 scmaxres[findex] = obmaxres[findex] if obmaxres[findex] > scmaxres[findex] else scmaxres[findex]
                 scminres[findex] = obminres[findex] if obminres[findex] < scminres[findex] else scminres[findex]
                 scavres[findex] += obavres[findex]
-
-#                ob['omax'] = {str(f):obmaxres[f - scene.fs] for f in framerange(scene, simnode.animmenu)}
-#                ob['omin'] = {str(f):obminres[f - scene.fs] for f in framerange(scene, simnode.animmenu)}
-#                ob['oave'] = {str(f):obavres[f - scene.fs] for f in framerange(scene, simnode.animmenu)}
-#                ob['oreslist'] = {str(f):[100*sh[2] for sh in shadcentres[f - scene.fs]] for f in framerange(scene, simnode.animmenu)}
 
         skframe('', scene, obcalclist, simnode.animmenu)
         try:
