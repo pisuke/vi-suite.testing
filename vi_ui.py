@@ -76,12 +76,8 @@ class VIMatPanel(bpy.types.Panel):
     def draw(self, context):
         cm = context.material
         layout = self.layout
+        newrow(layout, 'Material type', cm, "mattype")
         row = layout.row()
-        row.prop(cm, "vi_shadow")
-        row = layout.row()
-        row.prop(cm, "livi_sense")
-        row = layout.row()
-
         if context.scene.get('liviparams'):
             connode = bpy.data.node_groups[context.scene['liviparams']['compnode'].split('@')[1]].nodes[context.scene['liviparams']['compnode'].split('@')[0]]
             if cm.livi_sense:

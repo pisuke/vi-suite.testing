@@ -184,7 +184,7 @@ def resapply(calc_op, res, svres, simnode, connode, geonode):
                 
                 bm = bmesh.new()
                 bm.from_mesh(o.data)
-                geofaces = [face for face in bm.faces if o.data.materials[face.material_index].livi_sense]
+                sfaces = [face for face in bm.faces if o.data.materials[face.material_index].mattype == '1']
                 pend, passarea = pstart + lenpoints, 0
                 
                 
@@ -192,31 +192,31 @@ def resapply(calc_op, res, svres, simnode, connode, geonode):
 #                bpy.ops.mesh.vertex_color_add()
 #                geo.data.vertex_colors[-1].name = str(frame)
 #                vertexColour = geo.data.vertex_colors[str(frame)]
-#                mat = [matslot.material for matslot in geo.material_slots if matslot.material.livi_sense][0]
+                mat = [matslot.material for matslot in o.material_slots if matslot.material.mattype == '1'][0]
 #                mcol_i = len(tuple(set(lcol_i)))
 
                 
                 if geonode.cpoint == '1':
-                    rtindex = bm.verts.layers.int['rtindex']
+                    cindex = bm.verts.layers.int['cindex']
 #                    ores = [res[fr][v[rtindex] - 1] for v in bm.verts if v[rtindex] > 0]
 #                    o['oave'], o['omax'], o['omin'] = sum(ores)/len(ores), max(ores), min(ores)
                     if not bm.verts.layers.float.get('livi{}'.format(frame)):
                         bm.verts.layers.float.new('livi{}'.format(frame))
                     livires = bm.verts.layers.float['livi{}'.format(frame)]
-                    for v in [v for v in bm.verts if v[rtindex] > 0]:
-                        v[livires] = res[fr][v[rtindex] - 1]
+                    for v in [v for v in bm.verts if v[cindex] > 0]:
+                        v[livires] = res[fr][v[cindex] - 1]
 #                    reslist = [vert[livires] for vert in bm.verts if vert[rtindex] > 0]
 #                    reslist = ores
     
                 elif geonode.cpoint == '0':
-                    rtindex = bm.faces.layers.int['rtindex']
+                    cindex = bm.faces.layers.int['cindex']
 #                    ores = [res[fr][f[rtindex] - 1] for f in bm.faces if f[rtindex] > 0]
 #                    o['oave'], o['omax'], o['omin'] = sum(ores)/len(ores), max(ores), min(ores)
                     if not bm.faces.layers.float.get('livi{}'.format(frame)):
                         bm.faces.layers.float.new('livi{}'.format(frame))
                     livires = bm.faces.layers.float['livi{}'.format(frame)]
-                    for f in [f for f in bm.faces if f[rtindex] > 0]:
-                        f[livires] = res[fr][f[rtindex] - 1]
+                    for f in [f for f in bm.faces if f[cindex] > 0]:
+                        f[livires] = res[fr][f[cindex] - 1]
                 bm.to_mesh(o.data)
                 bm.free()
 
@@ -226,7 +226,7 @@ def resapply(calc_op, res, svres, simnode, connode, geonode):
                         bpy.ops.mesh.vertex_color_add()
                         o.data.vertex_colors[-1].name = '{}sv'.format(frame)
                         vertexColour = o.data.vertex_colors['{}sv'.format(frame)]
-                        for face in geofaces:
+                        for face in sfaces:
                             if geonode.cpoint == '1':
                                 cvtup = tuple(o['cverts'])
                                 for loop_index in face.loop_indices:
@@ -305,22 +305,22 @@ def resapply(calc_op, res, svres, simnode, connode, geonode):
                         if c[0] == 'Percent':
                             if c[2] == 'DF':
                                 dfpass[frame] = 1
-                                dfpassarea = dfpassarea + geoarea if sum(res[frame][pstart:pend])/(pend - pstart) > c[3] else dfpassarea
+                                dfpassarea = dfpassarea + oarea if sum(res[frame][pstart:pend])/(pend - pstart) > c[3] else dfpassarea
                                 comps[frame].append((0, 1)[sum(res[frame][pstart:pend])/(pend - pstart) > c[3]])
                                 comps[frame].append(sum(res[frame][pstart:pend])/(pend - pstart))
-                                dftotarea += geoarea
+                                dftotarea += oarea
                                 
                             if c[2] == 'PDF':
                                 dfpass[frame] = 1
-                                dfpassarea = sum([area for p, area in enumerate(geoareas) if res[frame][p + pstart] > c[3]])
-                                comps[frame].append((0, 1)[dfpassarea > c[1]*geoarea/100])
-                                comps[frame].append(100*dfpassarea/geoarea)
-                                dftotarea += geoarea
+                                dfpassarea = sum([area for p, area in enumerate(oareas) if res[frame][p + pstart] > c[3]])
+                                comps[frame].append((0, 1)[dfpassarea > c[1]*oarea/100])
+                                comps[frame].append(100*dfpassarea/oarea)
+                                dftotarea += oarea
 
                             elif c[2] == 'Skyview':
-                                passarea = sum([area for p, area in enumerate(geoareas) if svres[frame][p + pstart] > 0])
-                                comps[frame].append((0, 1)[passarea >= c[1]*geoarea/100])
-                                comps[frame].append(100*passarea/geoarea)
+                                passarea = sum([area for p, area in enumerate(oareas) if svres[frame][p + pstart] > 0])
+                                comps[frame].append((0, 1)[passarea >= c[1]*oarea/100])
+                                comps[frame].append(100*passarea/oarea)
                                 passarea = 0
 
                         elif c[0] == 'Min':
@@ -332,29 +332,29 @@ def resapply(calc_op, res, svres, simnode, connode, geonode):
                             comps[frame].append(min(res[frame][pstart:pend])/(sum(res[frame])/(pend - pstart)))
 
                         elif c[0] == 'Average':
-                            comps[frame].append((0, 1)[sum([area * res[frame][p + pstart] for p, area in enumerate(geoareas)])/geoarea > c[3]])
-                            comps[frame].append(sum([area * res[frame][p + pstart] for p, area in enumerate(geoareas)])/geoarea)
+                            comps[frame].append((0, 1)[sum([area * res[frame][p + pstart] for p, area in enumerate(oareas)])/oarea > c[3]])
+                            comps[frame].append(sum([area * res[frame][p + pstart] for p, area in enumerate(oareas)])/oarea)
 
                     for e in ecrit:
                         if e[0] == 'Percent':
                             if e[2] == 'DF':
                                 edfpass[frame] = [1, (0, 1)[sum(res[frame][pstart:pend])/(pend - pstart) > e[3]], sum(res[frame][pstart:pend])/(pend - pstart)]
-                                edfpassarea = edfpassarea + geoarea if sum(res[frame][pstart:pend])/(pend - pstart) > e[3] else edfpassarea
+                                edfpassarea = edfpassarea + oarea if sum(res[frame][pstart:pend])/(pend - pstart) > e[3] else edfpassarea
                                 ecomps[frame].append((0, 1)[sum(res[frame][pstart:pend])/(pend - pstart) > e[3]])
                                 ecomps[frame].append(sum(res[frame][pstart:pend])/(pend - pstart))
-                                edftotarea += geoarea
+                                edftotarea += oarea
                                 
                             if e[2] == 'PDF':
                                 edfpass[frame] = 1
-                                edfpassarea = sum([facearea(geo, face) for fa, face in enumerate(geofaces) if res[frame][fa + pstart] > e[3]])      
-                                ecomps[frame].append((0, 1)[dfpassarea > e[1]*geoarea/100])
-                                ecomps[frame].append(100*edfpassarea/geoarea)
-                                edftotarea += geoarea
+                                edfpassarea = sum([facearea(o, face) for fa, face in enumerate(ofaces) if res[frame][fa + pstart] > e[3]])      
+                                ecomps[frame].append((0, 1)[dfpassarea > e[1]*oarea/100])
+                                ecomps[frame].append(100*edfpassarea/oarea)
+                                edftotarea += oarea
 
                             elif e[2] == 'Skyview':
-                                passarea = sum([facearea(geo, face) for fa, face in enumerate(geofaces) if svres[frame][fa] > 0])
-                                ecomps[frame].append((0, 1)[passarea >= e[1] * geoarea/100])
-                                ecomps[frame].append(100*passarea/geoarea)
+                                passarea = sum([facearea(o, face) for fa, face in enumerate(ofaces) if svres[frame][fa] > 0])
+                                ecomps[frame].append((0, 1)[passarea >= e[1] * oarea/100])
+                                ecomps[frame].append(100*passarea/oarea)
                                 passarea = 0
 
                         elif e[0] == 'Min':
@@ -369,8 +369,8 @@ def resapply(calc_op, res, svres, simnode, connode, geonode):
                             ecomps[frame].append((0, 1)[sum(res[frame][pstart:pend])/(pend - pstart) > e[3]])
                             ecomps[frame].append(sum(res[frame][pstart:pend])/(pend - pstart))
 
-                    geo['crit'], geo['ecrit'], geo['comps'], geo['ecomps'] = [[c[0], str(c[1]), c[2], str(c[3]), c[4]] for c in crit[:]], [[c[0], str(c[1]), c[2], str(c[3]), c[4]] for c in ecrit[:]], comps, ecomps
-                    crits.append(geo['crit'])
+                    o['crit'], o['ecrit'], o['comps'], o['ecomps'] = [[c[0], str(c[1]), c[2], str(c[3]), c[4]] for c in crit[:]], [[c[0], str(c[1]), c[2], str(c[3]), c[4]] for c in ecrit[:]], comps, ecomps
+                    crits.append(o['crit'])
                     pstart = pend
     
         if connode.bl_label == 'LiVi Compliance': 
@@ -387,8 +387,8 @@ def resapply(calc_op, res, svres, simnode, connode, geonode):
             for geo in retobjs('livic'):
                 bpy.ops.object.select_all(action = 'DESELECT')
                 eof, eov, hours, scene.objects.active = sof + len(geo['cfaces']), sov + len(geo['cverts']), len(res[0]), None
-                geoarea = sum(geo['lisenseareas'])
-                geofaces = [face for face in geo.data.polygons if geo.data.materials[face.material_index].livi_sense]
+                oarea = sum(geo['lisenseareas'])
+                ofaces = [face for face in geo.data.polygons if geo.data.materials[face.material_index].mattype == '1']
                 geo['wattres'] = {str(frame):[0 for x in range(len(res[0]))]}
                 for i in range(hours):
                     if geonode.cpoint == '0':

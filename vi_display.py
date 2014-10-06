@@ -37,7 +37,10 @@ def li_display(simnode, connode, geonode):
     scene = bpy.context.scene
     obreslist = []
     obcalclist = []
-    cmap('hot')
+    if 'LiVi' in simnode.bl_label:
+        cmap('hot')
+    else:
+        cmap('grey')
 
     for geo in scene.objects:
         scene.objects.active = geo
@@ -49,10 +52,10 @@ def li_display(simnode, connode, geonode):
     if len(bpy.app.handlers.frame_change_pre) == 0:
         bpy.app.handlers.frame_change_pre.append(livi_export.cyfc1)
         
-    for geo in scene.objects:
+    for o in scene.objects:
         if geo.type == "MESH" and geo.get('licalc') and geo.hide == False:
             bpy.ops.object.select_all(action = 'DESELECT')
-            obcalclist.append(geo)
+            obcalclist.append(o)
 
     scene.frame_set(scene.fs)
     scene.objects.active = None
@@ -62,15 +65,16 @@ def li_display(simnode, connode, geonode):
         bm = bmesh.new()
         bm.from_mesh(o.data)
         bm.transform(o.matrix_world)
-               
+        
+
         if cp == '0':  
-            rtindex = bm.faces.layers.int['rtindex']
-            for f in [f for f in bm.faces if f[rtindex] < 1]:
+            cindex = bm.faces.layers.int['cindex']
+            for f in [f for f in bm.faces if f[cindex] < 1]:
                 bm.faces.remove(f)
 
         elif cp == '1':
-            rtindex =  bm.verts.layers.int['rtindex']
-            for v in [v for v in bm.verts if v[rtindex] < 1]:
+            cindex =  bm.verts.layers.int['cindex']
+            for v in [v for v in bm.verts if v[cindex] < 1]:
                 bm.verts.remove(v)
 
         oresm = bpy.data.meshes.new(o.name+"res") 
@@ -81,7 +85,7 @@ def li_display(simnode, connode, geonode):
         scene.objects.link(ores)
         selobj(scene, ores)
         
-        for matname in ['livi#{}'.format(i) for i in range(20)]:
+        for matname in ['{}#{}'.format(('livi', 'shad')['Shadow' in simnode.bl_label], i) for i in range(20)]:
             if bpy.data.materials[matname] not in ores.data.materials[:]:
                 bpy.ops.object.material_slot_add()
                 ores.material_slots[-1].material = bpy.data.materials[matname]
@@ -354,7 +358,7 @@ def li_compliance(self, context, connode):
     def space_compliance(geos):
         frame, buildspace, pfs, epfs, lencrit = scene.frame_current, '', [], [], 0
         for geo in geos:
-            mat = [m for m in geo.data.materials if m.livi_sense][0]
+            mat = [m for m in geo.data.materials if m.mattype == '1'][0]
             geo['cr4'] = [('fail', 'pass')[int(com)] for com in geo['comps'][frame][:][::2]]
             geo['cr6'] = [cri[4] for cri in geo['crit']]
             if 'fail' in [c for i, c in enumerate(geo['cr4']) if geo['cr6'][i] == '1'] or bpy.context.scene['dfpass'][frame] == 1:
@@ -395,7 +399,7 @@ def li_compliance(self, context, connode):
             lencrit = 1 + len(geo['crit'])
             drawpoly(100, height - 70, 900, height - 70  - (lencrit)*25)
             drawloop(100, height - 70, 900, height - 70  - (lencrit)*25)
-            mat = [m for m in bpy.context.active_object.data.materials if m.livi_sense][0]
+            mat = [m for m in bpy.context.active_object.data.materials if m.mattype == '1'][0]
             if connode.analysismenu == '0':
                 buildspace = ('', '', (' - Public/Staff', ' - Patient')[int(mat.hspacemenu)], (' - Kitchen', ' - Living/Dining/Study', ' - Communal')[int(mat.brspacemenu)], (' - Sales', ' - Office')[int(mat.respacemenu)], '')[int(connode.bambuildmenu)]
             elif connode.analysismenu == '1':

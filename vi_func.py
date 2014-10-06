@@ -858,6 +858,6 @@ def li_calcob(ob, li):
     if not ob.data.materials:
         return False
     else:
-        ob.licalc = 1 if [face.index for face in ob.data.polygons if (ob.data.materials[face.material_index].vi_shadow, ob.data.materials[face.material_index].livi_sense)[li == 'livi']] else 0
+        ob.licalc = 1 if [face.index for face in ob.data.polygons if (ob.data.materials[face.material_index].mattype == '2', ob.data.materials[face.material_index].mattype == '1')[li == 'livi']] else 0
         return ob.licalc
     

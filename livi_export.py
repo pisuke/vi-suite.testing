@@ -84,7 +84,7 @@ def radgexport(export_op, node, **kwargs):
                 for mat in [m for m in o.data.materials if m.name not in matnames]:
 #                    mradfile += mat.radmat(scene)
                     matnames.append(mat.name)
-                    mat.use_vertex_color_paint = 1 if mat.livi_sense else 0
+#                    mat.use_vertex_color_paint = 1 if mat.livi_sense else 0
                     if mat['radentry'].split(' ')[1] in ('light', 'mirror', 'antimatter'):
                         export_op.report({'INFO'}, o.name+" has an antimatter, emission or mirror material. Basic export routine used with no modifiers.")
                         o['merr'] = 1 
@@ -176,32 +176,32 @@ def radgexport(export_op, node, **kwargs):
                     scene.objects.active = o
             
                     if node.cpoint == '0':               
-                        if bm.verts.layers.int.get('rtindex'):
-                            bm.verts.layers.int.remove(bm.verts.layers.int['rtindex'])
-                        if bm.faces.layers.int.get('rtindex'):
-                            bm.faces.layers.int.remove(bm.faces.layers.int['rtindex'])
-                        bm.faces.layers.int.new('rtindex')
-                        rtindex = bm.faces.layers.int['rtindex'] 
-                        csf = [face for face in bm.faces if o.data.materials[face.material_index].livi_sense]
-                        csfc = [face.calc_center_median() for face in bm.faces if o.data.materials[face.material_index].livi_sense]
-                        csfi = [face.index for face in bm.faces if o.data.materials[face.material_index].livi_sense]
+                        if bm.verts.layers.int.get('cindex'):
+                            bm.verts.layers.int.remove(bm.verts.layers.int['cindex'])
+                        if bm.faces.layers.int.get('cindex'):
+                            bm.faces.layers.int.remove(bm.faces.layers.int['cindex'])
+                        bm.faces.layers.int.new('cindex')
+                        cindex = bm.faces.layers.int['cindex'] 
+                        csf = [face for face in bm.faces if o.data.materials[face.material_index].mattype == '1']
+                        csfc = [face.calc_center_median() for face in bm.faces if o.data.materials[face.material_index].mattype == '1']
+                        csfi = [face.index for face in bm.faces if o.data.materials[face.material_index].mattype == '1']
                         
                         for fi, f in enumerate(csf):
                             rtpoints += '{0[0]:.3f} {0[1]:.3f} {0[2]:.3f} {1[0]:.3f} {1[1]:.3f} {1[2]:.3f} \n'.format([csfc[fi][i] + node.offset * f.normal.normalized()[i] for i in range(3)], f.normal.normalized()[:])
-                            f[rtindex] = rti
+                            f[cindex] = rti
                             rti+= 1
                             
                     elif node.cpoint == '1': 
-                        if bm.faces.layers.int.get('rtindex'):
-                            bm.faces.layers.int.remove(bm.faces.layers.int['rtindex'])
-                        if bm.verts.layers.int.get('rtindex'):
-                            bm.verts.layers.int.remove(bm.verts.layers.int['rtindex'])
-                        bm.verts.layers.int.new('rtindex')
-                        rtindex = bm.verts.layers.int['rtindex']
-                        cverts = set([item for sublist in [face.verts[:] for face in bm.faces if o.data.materials[face.material_index].livi_sense] for item in sublist])
+                        if bm.faces.layers.int.get('cindex'):
+                            bm.faces.layers.int.remove(bm.faces.layers.int['cindex'])
+                        if bm.verts.layers.int.get('cindex'):
+                            bm.verts.layers.int.remove(bm.verts.layers.int['cindex'])
+                        bm.verts.layers.int.new('cindex')
+                        cindex = bm.verts.layers.int['cindex']
+                        cverts = set([item for sublist in [face.verts[:] for face in bm.faces if o.data.materials[face.material_index].mattype == '1'] for item in sublist])
                         for vert in cverts:
                             rtpoints += '{0[0]:.3f} {0[1]:.3f} {0[2]:.3f} {1[0]:.3f} {1[1]:.3f} {1[2]:.3f} \n'.format([vert.co[i] + node.offset * vert.normal.normalized()[i] for i in range(3)], (vert.normal.normalized()[:]))
-                            vert[rtindex] = rti
+                            vert[cindex] = rti
                             rti += 1
                     (o['cverts'], o['cfaces'], o['lisenseareas']) = ([cv.index for cv in cverts], csfi, [vertarea(bm, vert) for vert in cverts]) if node.cpoint == '1' else ([], csfi, [f.calc_area() for f in csf])      
                 bm.transform(o.matrix_world.inverted())
@@ -398,7 +398,7 @@ def createoconv(scene, frame, export_op, **kwargs):
 def cyfc1(self):
     scene = bpy.context.scene
     if 'LiVi' in scene.resnode or 'Shadow' in scene.resnode:
-        for material in [m for m in bpy.data.materials if m.use_nodes and (m.livi_sense or m.vi_shadow)]:
+        for material in [m for m in bpy.data.materials if m.use_nodes and m.mattype in ('1', '2')]:
             try:
                 if any([node.bl_label == 'Attribute' for node in material.node_tree.nodes]):
                     material.node_tree.nodes["Attribute"].attribute_name = str(scene.frame_current)
