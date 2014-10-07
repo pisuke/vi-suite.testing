@@ -339,7 +339,7 @@ class NODE_OT_LiVIGlare(bpy.types.Operator):
 
 class NODE_OT_LiViCalc(bpy.types.Operator):
     bl_idname = "node.livicalc"
-    bl_label = "LiVi Simulation"
+    bl_label = "LiVi simulation"
 
     nodeid = bpy.props.StringProperty()
 
@@ -1057,7 +1057,7 @@ class NODE_OT_Shadow(bpy.types.Operator):
 
     def invoke(self, context, event):
         scene = context.scene
-        ocalclist = [ob for ob in scene.objects if ob.type == 'MESH' and not ob.hide and any([f for f in ob.data.polygons if ob.data.materials[f.material_index].mattype == '2'])]
+        ocalclist = [ob for ob in scene.objects if ob.type == 'MESH' and not ob.hide and len([f for f in ob.data.polygons if ob.data.materials[f.material_index].mattype == '2'])]
         if not ocalclist:
             self.report({'ERROR'},"No objects have a VI Shadow material attached.")
             return
@@ -1073,13 +1073,13 @@ class NODE_OT_Shadow(bpy.types.Operator):
         if simnode.starthour > simnode.endhour:
             self.report({'ERROR'},"End hour is before start hour.")
             return{'FINISHED'}
-        scene.resnode, direcs, obcalclist, simnode['Animation'] = simnode.name, [], [], simnode.animmenu
+        scene.resnode, simnode['Animation'] = simnode.name, simnode.animmenu
 
         if simnode['Animation'] == 'Static':
             scmaxres, scminres, scavres, scene.fs = [0], [100], [0], scene.frame_current
         else:
             (scmaxres, scminres, scavres) = [[x] * scene.frame_end - scene.frame_start + 1 for x in (0, 100, 0)]
-#        oreslist = []
+            
         fdiff =  1 if simnode['Animation'] == 'Static' else scene.frame_end - scene.frame_start + 1
         time = datetime.datetime(datetime.datetime.now().year, simnode.startmonth, 1, simnode.starthour - 1)
         y =  datetime.datetime.now().year if simnode.endmonth >= simnode.startmonth else datetime.datetime.now().year + 1
@@ -1088,37 +1088,13 @@ class NODE_OT_Shadow(bpy.types.Operator):
         times = [time + interval*t for t in range(int((endtime - time)/interval)) if simnode.starthour <= (time + interval*t).hour <= simnode.endhour]
         sps = [solarPosition(t.timetuple().tm_yday, t.hour+t.minute/60, scene['latitude'], scene['longitude'])[2:] for t in times]
         direcs = [mathutils.Vector((-sin(sp[1]), -cos(sp[1]), tan(sp[0]))) for sp in sps if sp[0] > 0]
-#        while time <= endtime:
-#            if simnode.starthour <= time.hour <= simnode.endhour:
-#                beta, phi = solarPosition(time.timetuple().tm_yday, time.hour+time.minute/60, scene['latitude'], scene['longitude'])[2:]
-#                if beta > 0:
-#                    direcs.append(mathutils.Vector((-sin(phi), -cos(phi), tan(beta))))
-#            time += interval
-#        ocalclist = [ob for ob in scene.objects if ob.type == 'MESH' and not ob.hide and ob.name in scene['livic']]
+
         for o in ocalclist:
             ci = 1
-#            if li_calcob(o, 'shadow'):
             bm = bmesh.new()
             bm.from_mesh(o.data)
-            bm.transform(o.matrix_world)
-
-                
-#            oresm = bpy.data.meshes.new(o.name+"res") 
-#            ores = bpy.data.objects.new(o.name+"res", oresm)
-#            scene.objects.link(ores)
-#            ores['omax'], ores['omin'], ores['oave'], ores['lires'] = {}, {}, {}, 1
-#            oreslist.append(ores)
-#            selobj(scene, ores)
-#            for matname in ['shad#{}'.format(i) for i in range(20)]:
-#                if bpy.data.materials[matname] not in ores.data.materials[:]:
-#                    bpy.ops.object.material_slot_add()
-#                    ores.material_slots[-1].material = bpy.data.materials[matname]
-                
-#            for f in [f for f in bm.faces if not o.data.materials[f.material_index].mattype == '2']:
-#                bm.faces.remove(f)
-            
+            bm.transform(o.matrix_world)            
             if simnode.cpoint == '0':  
-#                shadfaces = 
                 bm.faces.layers.int.new('cindex')
                 cindex = bm.faces.layers.int['cindex']
                 for f in [f for f in bm.faces if o.data.materials[f.material_index].mattype == '2']:
@@ -1131,14 +1107,11 @@ class NODE_OT_Shadow(bpy.types.Operator):
                     bm.verts.layers.int.remove(bm.verts.layers.int['cindex'])
                 bm.verts.layers.int.new('cindex')
                 cindex = bm.verts.layers.int['cindex'] 
-#                shadverts = [v for v in bm.verts if any([o.data.materials[f.material_index].mattype == '2' for f in v.link_faces])] 
                 bm.verts.layers.int.new('cindex')
                 
                 for v in [v for v in bm.verts if any([o.data.materials[f.material_index].mattype == '2' for f in v.link_faces])]:
                     v[cindex] = ci
                     ci+= 1
-            
-#            shadcentres = [[] for f in range(fdiff)]
             [obsumarea, obmaxres, obminres] = [[0 for f in range(fdiff)] for x in range(3)]
 
             for findex, frame in enumerate(range(scene.fs, scene.fe + 1)):
@@ -1147,51 +1120,18 @@ class NODE_OT_Shadow(bpy.types.Operator):
 
                 if simnode.cpoint == '0':  
                     bm.faces.layers.float.new('livi{}'.format(frame))
-                    shadres = bm.faces.layers.float['livi{}'.format(frame)]
-                
-#                    shadcentres[findex] = [f.calc_center() + (0.05 * f.normal) for f in bm.faces]                    
+                    shadres = bm.faces.layers.float['livi{}'.format(frame)]                   
                     for f in [f for f in bm.faces if o.data.materials[f.material_index].mattype == '2']:
-#                        f[shadres] = 100
                         f[shadres] = 100 * (1 - sum([bpy.data.scenes[0].ray_cast(f.calc_center_median() + (0.05 * f.normal), f.calc_center_median() + 10000*direc)[0] for direc in direcs])/len(direcs))
-#                        for direc in direcs:
-#                            if bpy.data.scenes[0].ray_cast(f.calc_center() + (0.05 * f.normal), f.calc_center() + 10000*direc)[0]:
-#                                f[shadres] -= 100/len(direcs)
-
-#                    vals = array([f[shadres] for f in bm.faces])
- 
-                else:
-#                    shadverts = [v for v in bm.verts if any([o.data.materials[f.material_index].mattype == '2' for f in v.link_faces])]                                       
+                else:                                     
                     bm.verts.layers.float.new('livi{}'.format(frame))
                     shadres = bm.verts.layers.float['livi{}'.format(frame)]
-#                    shadcentres[findex] = [v.co + (0.05 * v.normal) for v in bm.verts] 
                     for v in [v for v in bm.verts if any([o.data.materials[f.material_index].mattype == '2' for f in v.link_faces])]:
                         v[shadres] = 100 * (1 - sum([bpy.data.scenes[0].ray_cast(v.co + 0.01*v.normal, v.co + 10000*direc)[0] for direc in direcs])/len(direcs))
-#                        for direc in direcs:
-#                            if bpy.data.scenes[0].ray_cast(v.co + 0.01*v.normal, v.co + 10000*direc)[0]:
-#                                v[shadres] -= 100/len(direcs)
-#                    vals = array([sum([v[shadres] for v in f.verts])/len(f.verts) for f in bm.faces])
-#                bins = array([5*i for i in range(1, 20)])
-#                nmatis = digitize(vals, bins)  
-#                for fi, f in enumerate(bm.faces):
-#                    f.material_index = nmatis[fi]
+
             bm.transform(o.matrix_world.inverted())
             bm.to_mesh(o.data)
-#                [f.keyframe_insert('material_index', frame=frame) for f in ores.data.polygons] 
-#                ores['omax'][str(findex)] = max([v[shadres] for v in bm.verts]) if simnode.cpoint == '1' else max([f[shadres] for f in bm.faces]) 
-#                ores['omin'][str(findex)] = min([v[shadres] for v in bm.verts]) if simnode.cpoint == '1' else min([f[shadres] for f in bm.faces]) 
-#                ores['oave'][str(findex)] = sum([v[shadres] for v in bm.verts])/len(bm.verts) if simnode.cpoint == '1' else sum([f[shadres] for f in bm.faces])/len(bm.faces)
-                
-#                scmaxres[findex] = obmaxres[findex] if obmaxres[findex] > scmaxres[findex] else scmaxres[findex]
-#                scminres[findex] = obminres[findex] if obminres[findex] < scminres[findex] else scminres[findex]
-#                scavres[findex] = sum([o['oave'][str(findex)] for o in oreslist])/len(oreslist)
-
-#        skframe('', scene, obcalclist, simnode.animmenu)
-#        try:
-#            scene['livic'], simnode['maxres'], simnode['minres'], simnode['avres'] = [o.name for o in oreslist], [100]*fdiff, [0]*fdiff, [sum([o['oave'][str(f)] for o in oreslist])/len(oreslist) for f in range(fdiff)]
-#        except ZeroDivisionError:
-#            self.report({'ERROR'},"No objects have a VI Shadow material attached.")
 
         scene.frame_set(scene.fs)
-        scene['livic'] = [o.name for o in ocalclist]
-#        simnode.bl_label = simnode.bl_label[1:] if simnode.bl_label[0] == '*' else simnode.bl_label
+        scene['shadc'] = [o.name for o in ocalclist]
         return {'FINISHED'}

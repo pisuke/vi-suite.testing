@@ -60,17 +60,17 @@ def li_display(simnode, connode, geonode):
     scene.frame_set(scene.fs)
     scene.objects.active = None
     
-    for i, o in enumerate([o for o in scene.objects if o.name in scene['livic']]):
+    for i, o in enumerate([o for o in scene.objects if o.name in scene['{}c'.format(('livi', 'shad')['Shadow' in simnode.bl_label])]]):
         selobj(scene, o)
         bm = bmesh.new()
         bm.from_mesh(o.data)
         bm.transform(o.matrix_world)
         
-
         if cp == '0':  
             cindex = bm.faces.layers.int['cindex']
             for f in [f for f in bm.faces if f[cindex] < 1]:
                 bm.faces.remove(f)
+            [bm.verts.remove(v) for v in bm.verts if not v.link_faces]
 
         elif cp == '1':
             cindex =  bm.verts.layers.int['cindex']
@@ -102,7 +102,7 @@ def li_display(simnode, connode, geonode):
             for fi, f in enumerate(bm.faces):
                 f.material_index = nmatis[fi]
             bm.to_mesh(ores.data)
-            [ores.data.polygons[f.index].keyframe_insert('material_index', frame=frame) for f in bm.faces]        
+            [ores.data.polygons[fi].keyframe_insert('material_index', frame=frame) for fi, f in enumerate(bm.faces)]        
             oreslist = [f[livires] for f in bm.faces] if cp == '0' else [v[livires] for v in bm.verts]
             ores['omax'][str(fr)], ores['omin'][str(fr)], ores['oave'][str(fr)] = max(oreslist), min(oreslist), sum(oreslist)/len(oreslist)
         
@@ -146,8 +146,8 @@ def linumdisplay(disp_op, context, simnode, connode, geonode):
     if not scene.vi_display:
         return
 
-    obreslist = [ob for ob in scene.objects if ob.type == 'MESH'  and 'lightarray' not in ob.name and ob.hide == False and ob.layers[scene.active_layer] == True and ob.lires == 1]
-
+    obreslist = [ob for ob in scene.objects if ob.type == 'MESH'  and 'lightarray' not in ob.name and ob.hide == False and ob.layers[scene.active_layer] == True and ob.get('lires')]
+                    
     if (scene.li_disp_panel != 2 and scene.ss_disp_panel != 2) or scene.vi_display_rp != True \
          or (bpy.context.active_object not in obreslist and scene.vi_display_sel_only == True)  \
          or (bpy.context.active_object and bpy.context.active_object.mode == 'EDIT'):
@@ -167,7 +167,6 @@ def linumdisplay(disp_op, context, simnode, connode, geonode):
     fn = context.scene.frame_current - scene.fs
     mid_x, mid_y, width, height = viewdesc(context)
     view_mat = context.space_data.region_3d.perspective_matrix
-    maxval, minval = max(simnode['maxres']), min(simnode['minres'])
     view_pivot = bpy.context.active_object.location if bpy.context.active_object and context.user_preferences.view.use_rotate_around_active else context.region_data.view_location
 
     if not context.space_data.region_3d.is_perspective:
@@ -209,12 +208,9 @@ def linumdisplay(disp_op, context, simnode, connode, geonode):
                 faces = [f for fi, f in enumerate(faces) if not scene.ray_cast(fpos[fi] + scene.vi_display_rp_off * f.normal, view_location)[0]] if scene.vi_display_vis_only else faces
                 fpos = [skfpos(ob, scene.frame_current, [v.index for v in f.verts]) for f in faces]
                 fcs = [view_mat*fpos[fi].to_4d() for fi, f in enumerate(faces)]
-
             draw_index(context, scene.vi_leg_display, mid_x, mid_y, width, height, faces, fcs, livires)
-
         else:
-            livires = bm.verts.layers.float['livi{}'.format(scene.frame_current)]
-            
+            livires = bm.verts.layers.float['livi{}'.format(scene.frame_current)]            
             if not scene.vi_disp_3d:
                 verts = [v for v in bm.verts if not v.hide and (v.co - view_location)*vw < 0]
                 verts = [v for v in verts if not scene.ray_cast(v.co + scene.vi_display_rp_off * v.normal, view_location)[0]] if scene.vi_display_vis_only else verts
@@ -224,16 +220,7 @@ def linumdisplay(disp_op, context, simnode, connode, geonode):
                 verts = [v for v in verts if not scene.ray_cast(omw*(ob.data.shape_keys.key_blocks[str(scene.frame_current)].data[v.index].co) + scene.vi_display_rp_off * v.normal, view_location)[0]] if scene.vi_display_vis_only else verts
                 vcs = [total_mat*ob.data.shape_keys.key_blocks[str(scene.frame_current)].data[v.index].co.to_4d() for v in verts]
             draw_index(context, scene.vi_leg_display, mid_x, mid_y, width, height, verts, vcs, livires)
-#            for v in verts:
-#                for f, face in enumerate(faces):
-#                    if v.index in face.vertices:
-#                        loop = face.loop_indices[list(face.vertices).index(v.index)]
-#                        vpos = v_pos(ob, v.index)
-#                        if geonode:
-#                            draw_index(context, scene.vi_leg_display, mid_x, mid_y, width, height, ('{:.1f}', '{:.0f}')[maxval > 100].format(abs(minval + int((1 - (1.333333*colorsys.rgb_to_hsv(*[obm.vertex_colors[fn].data[loop].color[i]/255 for i in range(3)])[0]))*(maxval - minval)))), total_mat*vpos.to_4d())
-#                        else:
-#                            draw_index(context, scene.vi_leg_display, mid_x, mid_y, width, height, ('{:.1f}', '{:.0f}')[maxval > 100].format(abs(minval + (obm.vertex_colors[fn].data[loop].color[0])*(maxval - minval))), total_mat*vpos.to_4d())
-#                        break
+
         bm.free()
     blf.disable(0, 4)
 
@@ -355,16 +342,17 @@ def li_compliance(self, context, connode):
     drawfont('Project Name: '+scene.li_projname, font_id, 0, height, 643, 58)
     blf.size(font_id, 20, 40)
 
-    def space_compliance(geos):
+    def space_compliance(os):
         frame, buildspace, pfs, epfs, lencrit = scene.frame_current, '', [], [], 0
-        for geo in geos:
-            mat = [m for m in geo.data.materials if m.mattype == '1'][0]
-            geo['cr4'] = [('fail', 'pass')[int(com)] for com in geo['comps'][frame][:][::2]]
-            geo['cr6'] = [cri[4] for cri in geo['crit']]
-            if 'fail' in [c for i, c in enumerate(geo['cr4']) if geo['cr6'][i] == '1'] or bpy.context.scene['dfpass'][frame] == 1:
+        for o in os:
+            print(o.name)
+            mat = [m for m in o.data.materials if m.mattype == '1'][0]
+            o['cr4'] = [('fail', 'pass')[int(com)] for com in o['comps'][frame][:][::2]]
+            o['cr6'] = [cri[4] for cri in o['crit']]
+            if 'fail' in [c for i, c in enumerate(o['cr4']) if o['cr6'][i] == '1'] or bpy.context.scene['dfpass'][frame] == 1:
                 pf = 'FAIL'
-            elif 'pass' not in [c for i, c in enumerate(geo['cr4']) if geo['cr6'][i] == '0.75'] and len([c for i, c in enumerate(geo['cr4']) if geo['cr6'][i] == '0.75']) > 0:
-                if 'pass' not in [c for i, c in enumerate(geo['cr4']) if geo['cr6'][i] == '0.5'] and len([c for i, c in enumerate(geo['cr4']) if geo['cr6'][i] == '0.5']) > 0:
+            elif 'pass' not in [c for i, c in enumerate(o['cr4']) if o['cr6'][i] == '0.75'] and len([c for i, c in enumerate(o['cr4']) if o['cr6'][i] == '0.75']) > 0:
+                if 'pass' not in [c for i, c in enumerate(o['cr4']) if o['cr6'][i] == '0.5'] and len([c for i, c in enumerate(o['cr4']) if o['cr6'][i] == '0.5']) > 0:
                     pf = 'FAIL'
                 else:
                     pf = 'PASS'
@@ -374,19 +362,19 @@ def li_compliance(self, context, connode):
 
             if connode.analysismenu == '1':
                 cfshpfsdict[('totkit', 'totliv')[mat.crspacemenu == '1']] += 1
-                if geo['cr4'][0] == 'pass':
+                if o['cr4'][0] == 'pass':
                     cfshpfsdict[('kitdf', 'livdf')[mat.crspacemenu == '1']] += 1
-                if geo['cr4'][1] == 'pass':
+                if o['cr4'][1] == 'pass':
                     cfshpfsdict[('kitsv', 'livsv')[mat.crspacemenu == '1']] += 1
 
             if connode.analysismenu == '0':
-                ecrit = geo['ecrit']
-                geo['ecr4'] = [('fail', 'pass')[int(com)] for com in geo['ecomps'][frame][:][::2]]
-                geo['ecr6'] = [ecri[4] for ecri in ecrit]
-                if 'fail' in [c for i, c in enumerate(geo['ecr4']) if geo['ecr6'][i] == '1'] or bpy.context.scene['dfpass'][frame] == 1:
+                ecrit = o['ecrit']
+                o['ecr4'] = [('fail', 'pass')[int(com)] for com in o['ecomps'][frame][:][::2]]
+                o['ecr6'] = [ecri[4] for ecri in ecrit]
+                if 'fail' in [c for i, c in enumerate(o['ecr4']) if o['ecr6'][i] == '1'] or bpy.context.scene['dfpass'][frame] == 1:
                     epf = 'FAIL'
-                elif 'pass' not in [c for i, c in enumerate(geo['ecr4']) if geo['ecr6'][i] == '0.75'] and len([c for i, c in enumerate(geo['ecr4']) if geo['ecr6'][i] == '0.75']) > 0:
-                    if 'pass' not in [c for i, c in enumerate(geo['ecr4']) if geo['ecr6'][i] == '0.5'] and len([c for i, c in enumerate(geo['ecr4']) if geo['ecr6'][i] == '0.5']) > 0:
+                elif 'pass' not in [c for i, c in enumerate(o['ecr4']) if o['ecr6'][i] == '0.75'] and len([c for i, c in enumerate(o['ecr4']) if o['ecr6'][i] == '0.75']) > 0:
+                    if 'pass' not in [c for i, c in enumerate(o['ecr4']) if o['ecr6'][i] == '0.5'] and len([c for i, c in enumerate(o['ecr4']) if o['ecr6'][i] == '0.5']) > 0:
                         epf = 'FAIL'
                     else:
                         epf = 'EXEMPLARY'
@@ -394,9 +382,9 @@ def li_compliance(self, context, connode):
                     epf = 'EXEMPLARY'
                 epfs.append(epf)
 
-        if bpy.context.active_object in geos:
-            geo = bpy.context.active_object
-            lencrit = 1 + len(geo['crit'])
+        if bpy.context.active_object in os:
+            o = bpy.context.active_object
+            lencrit = 1 + len(o['crit'])
             drawpoly(100, height - 70, 900, height - 70  - (lencrit)*25)
             drawloop(100, height - 70, 900, height - 70  - (lencrit)*25)
             mat = [m for m in bpy.context.active_object.data.materials if m.mattype == '1'][0]
@@ -407,34 +395,34 @@ def li_compliance(self, context, connode):
 
             titles = ('Zone Metric', 'Target', 'Achieved', 'PASS/FAIL')
             tables = [[] for c in range(lencrit -1)]
-            etables = [[] for e in range(len(geo['ecrit']))]
+            etables = [[] for e in range(len(o['ecrit']))]
             
-            for c, cr in enumerate(geo['crit']):
+            for c, cr in enumerate(o['crit']):
                 if cr[0] == 'Percent':
                     if cr[2] == 'Skyview':
-                        tables[c] = ('Percentage area with Skyview (%)', cr[1], '{:.2f}'.format(geo['comps'][frame][:][c*2 + 1]), geo['cr4'][c].upper())
+                        tables[c] = ('Percentage area with Skyview (%)', cr[1], '{:.2f}'.format(o['comps'][frame][:][c*2 + 1]), o['cr4'][c].upper())
                     elif cr[2] == 'DF':  
-                        tables[c] = ('Average Daylight Factor (%)', cr[3], '{:.2f}'.format(geo['comps'][frame][:][c*2 + 1]), geo['cr4'][c].upper())
+                        tables[c] = ('Average Daylight Factor (%)', cr[3], '{:.2f}'.format(o['comps'][frame][:][c*2 + 1]), o['cr4'][c].upper())
                     elif cr[2] == 'PDF':    
-                        tables[c] = ('Area with point Daylight Factor above {}'.format(cr[3]), cr[1], '{:.2f}'.format(geo['comps'][frame][:][c*2 + 1]), geo['cr4'][c].upper())
+                        tables[c] = ('Area with point Daylight Factor above {}'.format(cr[3]), cr[1], '{:.2f}'.format(o['comps'][frame][:][c*2 + 1]), o['cr4'][c].upper())
                 elif cr[0] == 'Ratio':
-                    tables[c] = ('Uniformity ratio', cr[3], '{:.2f}'.format(geo['comps'][frame][:][c*2 + 1]), geo['cr4'][c].upper())
+                    tables[c] = ('Uniformity ratio', cr[3], '{:.2f}'.format(o['comps'][frame][:][c*2 + 1]), o['cr4'][c].upper())
                 elif cr[0] == 'Min':
-                    tables[c] = ('Minimum {} (%)'.format('Point Daylight Factor'), cr[3], '{:.2f}'.format(geo['comps'][frame][:][c*2 + 1]), geo['cr4'][c].upper())
+                    tables[c] = ('Minimum {} (%)'.format('Point Daylight Factor'), cr[3], '{:.2f}'.format(o['comps'][frame][:][c*2 + 1]), o['cr4'][c].upper())
                 elif cr[0] == 'Average':
-                    tables[c] = ('Average {} (%)'.format('Daylight Factor'), cr[3], '{:.2f}'.format(geo['comps'][frame][:][c*2 + 1]), geo['cr4'][c].upper())
+                    tables[c] = ('Average {} (%)'.format('Daylight Factor'), cr[3], '{:.2f}'.format(o['comps'][frame][:][c*2 + 1]), o['cr4'][c].upper())
 
             if connode.analysismenu == '0':
                 for e, ecr in enumerate(ecrit):
                     if ecr[0] == 'Percent':
                         if ecr[2] == 'skyview':
-                            etables[e] = ('Percentage area with Skyview (%)', ecr[1], '{:.2f}'.format(geo['ecomps'][frame][:][e*2 + 1]), geo['ecr4'][e].upper())
+                            etables[e] = ('Percentage area with Skyview (%)', ecr[1], '{:.2f}'.format(o['ecomps'][frame][:][e*2 + 1]), o['ecr4'][e].upper())
                         elif ecr[2] == 'DF':  
-                            etables[e] = ('Average Daylight Factor (%)', ecr[3], '{:.2f}'.format(geo['ecomps'][frame][:][e*2 + 1]), geo['ecr4'][e].upper())
+                            etables[e] = ('Average Daylight Factor (%)', ecr[3], '{:.2f}'.format(o['ecomps'][frame][:][e*2 + 1]), o['ecr4'][e].upper())
                         elif ecr[2] == 'PDF':    
-                            etables[e] = ('Area with point Daylight Factor above {}'.format(ecr[3]), ecr[1], '{:.2f}'.format(geo['ecomps'][frame][:][e*2 + 1]), geo['ecr4'][e].upper())
+                            etables[e] = ('Area with point Daylight Factor above {}'.format(ecr[3]), ecr[1], '{:.2f}'.format(o['ecomps'][frame][:][e*2 + 1]), o['ecr4'][e].upper())
                     elif ecr[0] == 'Min':
-                        etables[e] = ('Minimum {} (%)'.format('Point Daylight Factor'), ecr[3], '{:.2f}'.format(geo['ecomps'][frame][:][e*2 + 1]), geo['ecr4'][e].upper())
+                        etables[e] = ('Minimum {} (%)'.format('Point Daylight Factor'), ecr[3], '{:.2f}'.format(o['ecomps'][frame][:][e*2 + 1]), o['ecr4'][e].upper())
 
             for j in range(4):
                 drawloop(widths[j], height - 70, widths[j+1], height - 95)
@@ -459,13 +447,12 @@ def li_compliance(self, context, connode):
             lencrit = 0
 
         tpf = 'FAIL' if 'FAIL' in pfs or 'FAIL*' in pfs else 'PASS'
-        if connode.analysismenu == '0':
-            
-            (tpf, lencrit) = ('EXEMPLARY', lencrit + len(geo['ecrit'])) if tpf == 'PASS' and ('FAIL' not in epfs and 'FAIL*' not in epfs) else (tpf, lencrit)
+        if connode.analysismenu == '0':            
+            (tpf, lencrit) = ('EXEMPLARY', lencrit + len(o['ecrit'])) if tpf == 'PASS' and ('FAIL' not in epfs and 'FAIL*' not in epfs) else (tpf, lencrit)
 
         return(tpf, lencrit, buildspace, etables)
     
-    build_compliance, lencrit, bs, etables = space_compliance(retobjs('livir'))
+    build_compliance, lencrit, bs, etables = space_compliance([o for o in bpy.data.objects if o.get('lires')])
 
     if build_compliance == 'EXEMPLARY':
         for t, tab in enumerate(etables):
@@ -555,22 +542,6 @@ def rendview(i):
                 if area.type == 'VIEW_3D':
                     for space in area.spaces:
                         if space.type == 'VIEW_3D':
-                            space.viewport_shade = 'SOLID'
-                            if i ==  1:
-                                space.show_textured_solid = 1
-                            else:
-                                space.show_textured_solid = 0
                             space.clip_start = 0.1
                             bpy.context.scene['cs'] = space.clip_start
 
-
-#def draw_index(r, g, b, total_mat, index, center):        
-#        vec = total_mat * center # order is important
-#        # dehomogenise
-#        vec = mathutils.Vector((vec[0] / vec[3], vec[1] / vec[3], vec[2] / vec[3]))
-#        x = int(mid_x + vec[0] * width / 2)
-#        y = int(mid_y + vec[1] * height / 2)
-#        
-##        bgl.glColor3f(r, g, b)
-#        blf.position(0, x, y, 0)
-#        blf.draw(0, str(index))

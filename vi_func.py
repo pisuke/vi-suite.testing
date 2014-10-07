@@ -205,7 +205,7 @@ def negneg(x):
     return float(x)
 
 def clearscene(scene, op):
-#    print(op.name)
+    print(op.name)
 #    if type(op) != str:
 #        if op.nodeid.split('@')[0] in ('LiVi Geometry', 'LiVi Simulation', 'LiVi Basic', 'LiVi Compliance', 'LiVi CBDM', 'LiVi Shadow'):
 #            for ob in [ob for ob in scene.objects if ob.type == 'MESH' and ob.get('licalc')]:
@@ -218,12 +218,12 @@ def clearscene(scene, op):
 #            scene.objects.unlink(sunob)
 
     for ob in [ob for ob in scene.objects if ob.type == 'MESH']:
+        if ob.mode != 'OBJECT':
+            bpy.ops.object.mode_set(mode = 'OBJECT')
         if ob.get('lires'):
             scene.objects.unlink(ob)       
         if ob.name in scene['livig']:
-            v, f = 0, 0 
-            if ob.mode != 'OBJECT':
-                bpy.ops.object.mode_set(mode = 'OBJECT')
+            v, f = 0, 0             
             if 'export' in op.name or 'simulation' in op.name:
                 bm = bmesh.new()
                 bm.from_mesh(ob.data)
@@ -233,6 +233,7 @@ def clearscene(scene, op):
                     if bm.verts.layers.int.get('rtindex'):
                         bm.verts.layers.int.remove(bm.verts.layers.int['rtindex'])
                 if "simulation" in op.name:
+                    print(bm.verts.layers.float.get('livi0'))
                     while bm.verts.layers.float.get('livi{}'.format(v)):
                         livires = bm.verts.layers.float['livi{}'.format(v)]
                         bm.verts.layers.float.remove(livires)
@@ -469,9 +470,8 @@ def vertarea(mesh, vert):
                 eps = [mathutils.geometry.intersect_line_line(face.calc_center_median(), ofaces[i].calc_center_median(), ovs[i][0].co, ovs[i][1].co)[1] for i in range(2)]
             area += mathutils.geometry.area_tri(vert.co, *eps) + mathutils.geometry.area_tri(face.calc_center_median(), *eps)
     elif len(faces) == 1:
-        fvs = [fv for fv in faces[0].vertices if (vert.index, fv.index) in faces[0].edge_keys or (fv.index, vert.index) in faces[0].edge_keys] 
-        eps = [(vert.co + mesh.vertices[fv].co)/2 for fv in fvs]
-        eangle = (vert.co - mesh.verts[fvs[0]].co).angle(vert.co - mesh.verts[fvs[1]].co)
+        eps = [(ev.verts[0].co +ev.verts[1].co)/2 for ev in vert.link_edges]
+        eangle = (vert.link_edges[0].verts[0].co - vert.link_edges[0].verts[1].co).angle(vert.link_edges[1].verts[0].co - vert.link_edges[1].verts[1].co)
         area = mathutils.geometry.area_tri(vert.co, *eps) + mathutils.geometry.area_tri(faces[0].calc_center_median(), *eps) * 2*pi/eangle
     return area       
 
@@ -770,15 +770,8 @@ def wr_axes():
 def skframe(pp, scene, oblist, anim):
     for frame in range(scene.fs, scene.fe + 1):
         scene.frame_set(frame)
-        for ob in oblist:
-            print('hi')
-#            if not ob.get('lires'):
-#                for vc in ob.data.vertex_colors:
-#                    vc.active = vc.active_render = vc.name == pp+str(frame)
-#                    vc.keyframe_insert("active")
-#                    vc.keyframe_insert("active_render")
-#            if scene.vi_disp_3d == 1:
-            for shape in ob.data.shape_keys.key_blocks:
+        for o in [o for o in oblist if o.data.shape_keys]:
+            for shape in o.data.shape_keys.key_blocks:
                 if shape.name.isdigit():
                     shape.value = shape.name == str(frame)
                     shape.keyframe_insert("value")

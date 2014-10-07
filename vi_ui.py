@@ -42,9 +42,11 @@ class Vi3DPanel(bpy.types.Panel):
                     if scene.render.engine == 'BLENDER_RENDER' and context.active_object and context.active_object.type == 'MESH':
                         row = layout.row()
                         row.prop(context.active_object, "show_wire")
-
+                    
                     if int(context.scene.vi_disp_3d) == 1:
                         newrow(layout, "3D Level", scene, "vi_disp_3dlevel")
+                        
+                    newrow(layout, "Transparency", scene, "vi_disp_trans")
 
                     if context.mode != "EDIT":
                         row = layout.row()
@@ -80,7 +82,7 @@ class VIMatPanel(bpy.types.Panel):
         row = layout.row()
         if context.scene.get('liviparams'):
             connode = bpy.data.node_groups[context.scene['liviparams']['compnode'].split('@')[1]].nodes[context.scene['liviparams']['compnode'].split('@')[0]]
-            if cm.livi_sense:
+            if cm.mattype == '1':
                 if connode.analysismenu == '0':
                     if connode.bambuildmenu == '2':
                         newrow(layout, "Space type:", cm, 'hspacemenu')

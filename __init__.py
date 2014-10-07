@@ -87,6 +87,14 @@ def eupdate(self, context):
                 o.data.update()
             bm.free()
 
+def tupdate(self, context):
+    for o in [o for o in context.scene.objects if o.type == 'MESH'  and 'lightarray' not in o.name and o.hide == False and o.layers[context.scene.active_layer] == True and o.get('lires')]:
+        o.show_transparent = 1
+    for mat in [bpy.data.materials['{}#{}'.format(('livi', 'shad')['Shadow' in context.scene.resnode], index)] for index in range(20)]:
+        mat.use_transparency = 1
+        mat.transparency_method = 'MASK'
+        mat.alpha = context.scene.vi_disp_trans
+        
 def register():
     bpy.utils.register_module(__name__)
     Object, Scene, Material = bpy.types.Object, bpy.types.Scene, bpy.types.Material
@@ -315,6 +323,7 @@ def register():
     Scene.vi_display_rp_fc = fvprop(4, "", "Font colour", [0.0, 0.0, 0.0, 1.0], 'COLOR', 0, 1)
     Scene.vi_display_rp_fsh = fvprop(4, "", "Font shadow", [0.0, 0.0, 0.0, 1.0], 'COLOR', 0, 1)
     Scene.vi_display_rp_off = fprop("", "Surface offset for number display", 0, 1, 0.001)
+    Scene.vi_disp_trans = bpy.props.FloatProperty(name = "", description = "Sensing material transparency", min = 0, max = 1, default = 1, update = tupdate)
     Scene.li_projname = sprop("", "Name of the building project", 1024, '')
     Scene.li_assorg = sprop("", "Name of the assessing organisation", 1024, '')
     Scene.li_assind = sprop("", "Name of the assessing individual", 1024, '')

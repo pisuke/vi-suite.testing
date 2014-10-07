@@ -224,7 +224,6 @@ def radgexport(export_op, node, **kwargs):
         if kwargs:
             createoconv(scene, frame, export_op)
             
-
 def radcexport(export_op, node, locnode, geonode):
     skyfileslist, scene, scene.li_disp_panel, scene.vi_display = [], bpy.context.scene, 0, 0
     clearscene(scene, export_op)
@@ -319,10 +318,7 @@ def radcexport(export_op, node, locnode, geonode):
                 node['skyfiles'] = [hdrsky(node.hdrname)]
     
     scene.fe = max(scene.cfe, scene.gfe)
-    print(scene.fe)
     scene.frame_set(scene.fs)
-#    simnode = node.outputs['Context out'].links[0].to_node if node.outputs['Context out'].links else 0
-#    geonode = simnode.geonodes() if simnode else 0
     
     for frame in range(scene.fs, scene.fe + 1):
         createradfile(scene, frame, export_op, node, geonode)
