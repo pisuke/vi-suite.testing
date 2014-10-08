@@ -139,12 +139,13 @@ def li_calc(calc_op, simnode, connode, geonode, simacc, **kwargs):
    
 def resapply(calc_op, res, svres, simnode, connode, geonode):
     scene = bpy.context.scene  
-    
+    simnode['maxres'], simnode['minres'], simnode['avres'] = {}, {}, {}
     if connode.analysismenu != '3' or connode.bl_label != 'LiVi CBDM':
+        for i in range(scene.fs, scene.fe + 1):
 #        if np == 1:
-        simnode['maxres'] = list([numpy.amax(res[i]) for i in range(scene.fs, scene.fe + 1)])
-        simnode['minres'] = [numpy.amin(res[i]) for i in range(scene.fs, scene.fe + 1)]
-        simnode['avres'] = [numpy.average(res[i]) for i in range(scene.fs, scene.fe + 1)]
+            simnode['maxres'][str(i)] = numpy.amax(res[i])
+            simnode['minres'][str(i)] = numpy.amin(res[i])
+            simnode['avres'][str(i)] = numpy.average(res[i])
 #        else:
 #            simnode['maxres'] = [max(res[i]) for i in range(scene.fs, scene.fe + 1)]
 #            simnode['minres'] = [min(res[i]) for i in range(scene.fs, scene.fe + 1)]
@@ -200,11 +201,17 @@ def resapply(calc_op, res, svres, simnode, connode, geonode):
                     cindex = bm.verts.layers.int['cindex']
 #                    ores = [res[fr][v[rtindex] - 1] for v in bm.verts if v[rtindex] > 0]
 #                    o['oave'], o['omax'], o['omin'] = sum(ores)/len(ores), max(ores), min(ores)
-                    if not bm.verts.layers.float.get('livi{}'.format(frame)):
-                        bm.verts.layers.float.new('livi{}'.format(frame))
-                    livires = bm.verts.layers.float['livi{}'.format(frame)]
+#                    if not bm.verts.layers.float.get('res{}'.format(frame)):
+                    bm.verts.layers.float.new('res{}'.format(frame))
+                    livires = bm.verts.layers.float['res{}'.format(frame)]
+                    if connode.bl_label == 'LiVi Compliance':
+#                        if not bm.verts.layers.float.get('sv{}'.format(frame)):
+                        bm.verts.layers.float.new('sv{}'.format(frame))
+                        sv = bm.verts.layers.float['sv{}'.format(frame)]
                     for v in [v for v in bm.verts if v[cindex] > 0]:
                         v[livires] = res[fr][v[cindex] - 1]
+                        if connode.bl_label == 'LiVi Compliance':
+                            v[sv] = svres[fr][v[cindex] - 1]
 #                    reslist = [vert[livires] for vert in bm.verts if vert[rtindex] > 0]
 #                    reslist = ores
     
@@ -212,34 +219,41 @@ def resapply(calc_op, res, svres, simnode, connode, geonode):
                     cindex = bm.faces.layers.int['cindex']
 #                    ores = [res[fr][f[rtindex] - 1] for f in bm.faces if f[rtindex] > 0]
 #                    o['oave'], o['omax'], o['omin'] = sum(ores)/len(ores), max(ores), min(ores)
-                    if not bm.faces.layers.float.get('livi{}'.format(frame)):
-                        bm.faces.layers.float.new('livi{}'.format(frame))
-                    livires = bm.faces.layers.float['livi{}'.format(frame)]
+#                    if not bm.faces.layers.float.get('res{}'.format(frame)):
+                    bm.faces.layers.float.new('res{}'.format(frame))
+                    livires = bm.faces.layers.float['res{}'.format(frame)]
+                    if connode.bl_label == 'LiVi Compliance':
+#                        if not bm.verts.layers.float.get('sv{}'.format(frame)):
+                        bm.faces.layers.float.new('sv{}'.format(frame))
+                        sv = bm.faces.layers.float['sv{}'.format(frame)]
                     for f in [f for f in bm.faces if f[cindex] > 0]:
                         f[livires] = res[fr][f[cindex] - 1]
+                        if connode.bl_label == 'LiVi Compliance':
+                            f[sv] = svres[fr][f[cindex] - 1]
                 bm.to_mesh(o.data)
                 bm.free()
 
 
                 if connode.bl_label == 'LiVi Compliance':
-                    if connode.analysismenu == '1':
-                        bpy.ops.mesh.vertex_color_add()
-                        o.data.vertex_colors[-1].name = '{}sv'.format(frame)
-                        vertexColour = o.data.vertex_colors['{}sv'.format(frame)]
-                        for face in sfaces:
-                            if geonode.cpoint == '1':
-                                cvtup = tuple(o['cverts'])
-                                for loop_index in face.loop_indices:
-                                    v = o.data.loops[loop_index].vertex_index
-                                    if v in cvtup:
-                                        col_i = cvtup.index(v)
-                                    lcol_i.append(col_i)
-                                    vertexColour.data[loop_index].color = rgb[col_i+mcol_i]
-
-                            elif geonode.cpoint == '0':
-                                for loop_index in face.loop_indices:
-                                    vertexColour.data[loop_index].color = (0, 1, 0) if svres[frame][fsv] > 0 else (1, 0, 0)
-                                fsv += 1
+                    o['compmat'] = mat.name
+#                    if connode.analysismenu == '1':
+#                        bpy.ops.mesh.vertex_color_add()
+#                        o.data.vertex_colors[-1].name = '{}sv'.format(frame)
+#                        vertexColour = o.data.vertex_colors['{}sv'.format(frame)]
+#                        for face in sfaces:
+#                            if geonode.cpoint == '1':
+#                                cvtup = tuple(o['cverts'])
+#                                for loop_index in face.loop_indices:
+#                                    v = o.data.loops[loop_index].vertex_index
+#                                    if v in cvtup:
+#                                        col_i = cvtup.index(v)
+#                                    lcol_i.append(col_i)
+#                                    vertexColour.data[loop_index].color = rgb[col_i+mcol_i]
+#
+#                            elif geonode.cpoint == '0':
+#                                for loop_index in face.loop_indices:
+#                                    vertexColour.data[loop_index].color = (0, 1, 0) if svres[frame][fsv] > 0 else (1, 0, 0)
+#                                fsv += 1
 
                     if fr == 0:
                         comps, ecomps =  [[[] * fra for fra in range(scene.fs, scene.fe + 1)] for x in range(2)]

@@ -222,7 +222,7 @@ def clearscene(scene, op):
             bpy.ops.object.mode_set(mode = 'OBJECT')
         if ob.get('lires'):
             scene.objects.unlink(ob)       
-        if ob.name in scene['livig']:
+        if scene.get('livig') and ob.name in scene['livig']:
             v, f = 0, 0             
             if 'export' in op.name or 'simulation' in op.name:
                 bm = bmesh.new()
@@ -233,13 +233,12 @@ def clearscene(scene, op):
                     if bm.verts.layers.int.get('rtindex'):
                         bm.verts.layers.int.remove(bm.verts.layers.int['rtindex'])
                 if "simulation" in op.name:
-                    print(bm.verts.layers.float.get('livi0'))
-                    while bm.verts.layers.float.get('livi{}'.format(v)):
-                        livires = bm.verts.layers.float['livi{}'.format(v)]
+                    while bm.verts.layers.float.get('res{}'.format(v)):
+                        livires = bm.verts.layers.float['res{}'.format(v)]
                         bm.verts.layers.float.remove(livires)
                         v += 1
-                    while bm.faces.layers.float.get('livi{}'.format(f)):
-                        livires = bm.faces.layers.float['livi{}'.format(f)]
+                    while bm.faces.layers.float.get('res{}'.format(f)):
+                        livires = bm.faces.layers.float['res{}'.format(f)]
                         bm.faces.layers.float.remove(livires)
                         f += 1
                 bm.to_mesh(ob.data)

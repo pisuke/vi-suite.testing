@@ -37,10 +37,11 @@ def li_display(simnode, connode, geonode):
     scene = bpy.context.scene
     obreslist = []
     obcalclist = []
-    if 'LiVi' in simnode.bl_label:
-        cmap('hot')
-    else:
-        cmap('grey')
+    (rcol, mtype) =  ('hot', 'livi') if 'LiVi' in simnode.bl_label else ('grey', 'shad')
+    cmap(rcol)
+#        'Shadow' in simnode.bl_label
+#    else:
+ #       cmap('grey')
 
     for geo in scene.objects:
         scene.objects.active = geo
@@ -60,7 +61,7 @@ def li_display(simnode, connode, geonode):
     scene.frame_set(scene.fs)
     scene.objects.active = None
     
-    for i, o in enumerate([o for o in scene.objects if o.name in scene['{}c'.format(('livi', 'shad')['Shadow' in simnode.bl_label])]]):
+    for i, o in enumerate([o for o in scene.objects if o.name in scene['{}c'.format(mtype)]]):
         selobj(scene, o)
         bm = bmesh.new()
         bm.from_mesh(o.data)
@@ -85,7 +86,7 @@ def li_display(simnode, connode, geonode):
         scene.objects.link(ores)
         selobj(scene, ores)
         
-        for matname in ['{}#{}'.format(('livi', 'shad')['Shadow' in simnode.bl_label], i) for i in range(20)]:
+        for matname in ['{}#{}'.format(mtype, i) for i in range(20)]:
             if bpy.data.materials[matname] not in ores.data.materials[:]:
                 bpy.ops.object.material_slot_add()
                 ores.material_slots[-1].material = bpy.data.materials[matname]
@@ -94,9 +95,9 @@ def li_display(simnode, connode, geonode):
             if fr == 0 and scene.vi_disp_3d == 1 and cp == '0':
                 for face in bmesh.ops.extrude_discrete_faces(bm, faces = bm.faces)['faces']:
                     face.select = True
-            livires = bm.faces.layers.float['livi{}'.format(fr)] if cp == '0' else bm.verts.layers.float['livi{}'.format(fr)]
-            vals = array([(f[livires] - min(simnode['minres']))/(max(simnode['maxres']) - min(simnode['minres'])) for f in bm.faces]) if cp == '0' else \
-            ([(sum([vert[livires] for vert in f.verts])/len(f.verts) - min(simnode['minres']))/(max(simnode['maxres']) - min(simnode['minres'])) for f in bm.faces])
+            livires = bm.faces.layers.float['res{}'.format(fr)] if cp == '0' else bm.verts.layers.float['res{}'.format(fr)]
+            vals = array([(f[livires] - min(simnode['minres'].values()))/(max(simnode['maxres'].values()) - min(simnode['minres'].values())) for f in bm.faces]) if cp == '0' else \
+            ([(sum([vert[livires] for vert in f.verts])/len(f.verts) - min(simnode['minres'].values()))/(max(simnode['maxres'].values()) - min(simnode['minres'].values())) for f in bm.faces])
             bins = array([0.05*i for i in range(1, 20)])
             nmatis = digitize(vals, bins)
             for fi, f in enumerate(bm.faces):
@@ -104,7 +105,7 @@ def li_display(simnode, connode, geonode):
             bm.to_mesh(ores.data)
             [ores.data.polygons[fi].keyframe_insert('material_index', frame=frame) for fi, f in enumerate(bm.faces)]        
             oreslist = [f[livires] for f in bm.faces] if cp == '0' else [v[livires] for v in bm.verts]
-            ores['omax'][str(fr)], ores['omin'][str(fr)], ores['oave'][str(fr)] = max(oreslist), min(oreslist), sum(oreslist)/len(oreslist)
+            ores['omax'][str(frame)], ores['omin'][str(frame)], ores['oave'][str(frame)] = max(oreslist), min(oreslist), sum(oreslist)/len(oreslist)
         
         bm.free()
         if scene.vi_disp_3d == 1:
@@ -194,7 +195,7 @@ def linumdisplay(disp_op, context, simnode, connode, geonode):
         bm.transform(omw)
         
         if cp == "0":
-            livires = bm.faces.layers.float['livi{}'.format(scene.frame_current)]
+            livires = bm.faces.layers.float['res{}'.format(scene.frame_current)]
             if not scene.vi_disp_3d:
                 faces = [f for f in bm.faces if not f.hide and (f.calc_center_median() - view_location)*vw < 0]
                 faces = [f for f in faces if not scene.ray_cast(f.calc_center_median() + scene.vi_display_rp_off * f.normal, view_location)[0]] if scene.vi_display_vis_only else faces
@@ -210,7 +211,7 @@ def linumdisplay(disp_op, context, simnode, connode, geonode):
                 fcs = [view_mat*fpos[fi].to_4d() for fi, f in enumerate(faces)]
             draw_index(context, scene.vi_leg_display, mid_x, mid_y, width, height, faces, fcs, livires)
         else:
-            livires = bm.verts.layers.float['livi{}'.format(scene.frame_current)]            
+            livires = bm.verts.layers.float['res{}'.format(scene.frame_current)]            
             if not scene.vi_disp_3d:
                 verts = [v for v in bm.verts if not v.hide and (v.co - view_location)*vw < 0]
                 verts = [v for v in verts if not scene.ray_cast(v.co + scene.vi_display_rp_off * v.normal, view_location)[0]] if scene.vi_display_vis_only else verts
@@ -226,11 +227,12 @@ def linumdisplay(disp_op, context, simnode, connode, geonode):
 
 def li3D_legend(self, context, simnode, connode, geonode):
     scene = context.scene
+    fc = str(scene.frame_current)
     try:
         if scene.vi_leg_display != True or scene.vi_display == 0 or (scene.wr_disp_panel != 1 and scene.li_disp_panel != 2 and scene.ss_disp_panel != 2) or scene.frame_current not in range(scene.fs, scene.fe + 1):
             return
         else:
-            resvals = [('{:.1f}', '{:.0f}')[max(simnode['maxres']) > 100].format(min(simnode['minres'])+i*(max(simnode['maxres'])-min(simnode['minres']))/19) for i in range(20)]    
+            resvals = [('{:.1f}', '{:.0f}')[max(simnode['maxres'].values()) > 100].format(min(simnode['minres'].values())+i*(max(simnode['maxres'].values())-min(simnode['minres'].values()))/19) for i in range(20)]    
             height = context.region.height
             lenres = len(resvals[-1])
             font_id = 0
@@ -261,18 +263,18 @@ def li3D_legend(self, context, simnode, connode, geonode):
             bgl.glDisable(bgl.GL_BLEND)
             height = context.region.height
             font_id = 0
-            if scene.frame_current in range(scene.fs, scene.fe + 1):
-                findex = scene.frame_current - scene.frame_start if simnode['Animation'] != 'Static' else 0
-                bgl.glColor4f(0.0, 0.0, 0.0, 0.8)
-                blf.size(font_id, 20, 48)
-                if context.active_object and (context.active_object.get('lires') or context.active_object.get('licalc')):
-                    drawfont("Ave: {:.1f}".format(context.active_object['oave'][str(scene.frame_current)]), font_id, 0, height, 22, 480)
-                    drawfont("Max: {:.1f}".format(context.active_object['omax'][str(scene.frame_current)]), font_id, 0, height, 22, 495)
-                    drawfont("Min: {:.1f}".format(context.active_object['omin'][str(scene.frame_current)]), font_id, 0, height, 22, 510)
-                else:
-                    drawfont("Ave: {:.1f}".format(simnode['avres'][findex]), font_id, 0, height, 22, 480)
-                    drawfont("Max: {:.1f}".format(simnode['maxres'][findex]), font_id, 0, height, 22, 495)
-                    drawfont("Min: {:.1f}".format(simnode['minres'][findex]), font_id, 0, height, 22, 510)
+#            if scene.frame_current in range(scene.fs, scene.fe + 1):
+#                findex = scene.frame_current - scene.frame_start if simnode['Animation'] != 'Static' else 0
+            bgl.glColor4f(0.0, 0.0, 0.0, 0.8)
+            blf.size(font_id, 20, 48)
+            if context.active_object and context.active_object.get('lires'):
+                drawfont("Ave: {:.1f}".format(context.active_object['oave'][fc]), font_id, 0, height, 22, 480)
+                drawfont("Max: {:.1f}".format(context.active_object['omax'][fc]), font_id, 0, height, 22, 495)
+                drawfont("Min: {:.1f}".format(context.active_object['omin'][fc]), font_id, 0, height, 22, 510)
+            else:
+                drawfont("Ave: {:.1f}".format(simnode['avres'][fc]), font_id, 0, height, 22, 480)
+                drawfont("Max: {:.1f}".format(simnode['maxres'][fc]), font_id, 0, height, 22, 495)
+                drawfont("Min: {:.1f}".format(simnode['minres'][fc]), font_id, 0, height, 22, 510)
     
     except Exception as e:
         print(e, 'Turning off legend display')
@@ -346,7 +348,7 @@ def li_compliance(self, context, connode):
         frame, buildspace, pfs, epfs, lencrit = scene.frame_current, '', [], [], 0
         for o in os:
             print(o.name)
-            mat = [m for m in o.data.materials if m.mattype == '1'][0]
+            mat = bpy.data.materials[o['compmat']]
             o['cr4'] = [('fail', 'pass')[int(com)] for com in o['comps'][frame][:][::2]]
             o['cr6'] = [cri[4] for cri in o['crit']]
             if 'fail' in [c for i, c in enumerate(o['cr4']) if o['cr6'][i] == '1'] or bpy.context.scene['dfpass'][frame] == 1:

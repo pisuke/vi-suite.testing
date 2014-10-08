@@ -76,14 +76,14 @@ def eupdate(self, context):
             bm.from_mesh(o.data)  
             bm.transform(o.matrix_world)
             if str(frame) in o['omax'].keys():
-                livires = bm.faces.layers.float['livi{}'.format(frame)] if o['cp'] == '0' else bm.verts.layers.float['livi{}'.format(frame)]                
+                res = bm.faces.layers.float['res{}'.format(frame)] if o['cp'] == '0' else bm.verts.layers.float['res{}'.format(frame)]                
                 if o['cp'] == '0':
                     for f in [f for f in bm.faces if f.select]:
                         for v in f.verts:
-                            o.data.shape_keys.key_blocks[str(frame)].data[v.index].co = o.data.shape_keys.key_blocks['Basis'].data[v.index].co + context.scene.vi_disp_3dlevel * (abs(inv - (f[livires]-mino)/(maxo - mino)) * f.normal)
+                            o.data.shape_keys.key_blocks[str(frame)].data[v.index].co = o.data.shape_keys.key_blocks['Basis'].data[v.index].co + context.scene.vi_disp_3dlevel * (abs(inv - (f[res]-mino)/(maxo - mino)) * f.normal)
                 elif o['cp'] == '1':
                     for v in bm.verts:
-                        o.data.shape_keys.key_blocks[str(frame)].data[v.index].co = o.data.shape_keys.key_blocks['Basis'].data[v.index].co + context.scene.vi_disp_3dlevel * (abs(inv - (v[livires]-mino)/(maxo - mino)) * v.normal)
+                        o.data.shape_keys.key_blocks[str(frame)].data[v.index].co = o.data.shape_keys.key_blocks['Basis'].data[v.index].co + context.scene.vi_disp_3dlevel * (abs(inv - (v[res]-mino)/(maxo - mino)) * v.normal)
                 o.data.update()
             bm.free()
 

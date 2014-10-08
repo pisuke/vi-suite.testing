@@ -600,6 +600,7 @@ class ViSSNode(bpy.types.Node, ViNodes):
     def export(self):
         nodecolour(self, 0)
         self['exportstate'] = [str(x) for x in (self.animmenu, self.startmonth, self.endmonth, self.starthour, self.endhour, self.interval, self.cpoint)]
+        self['minres'], self['maxres'], self['avres'] = {}, {}, {}
 
 class ViWRNode(bpy.types.Node, ViNodes):
     '''Node describing a VI-Suite wind rose generator'''

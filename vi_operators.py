@@ -1,6 +1,6 @@
 import bpy, bpy_extras, sys, datetime, mathutils, os, time, bmesh
 from os import rename
-from numpy import arange, array, digitize
+from numpy import arange, array, digitize, frombuffer, uint8
 import bpy_extras.io_utils as io_utils
 from subprocess import Popen, PIPE
 from collections import OrderedDict
@@ -20,7 +20,7 @@ from .livi_calc  import li_calc, resapply
 from .vi_display import li_display, li_compliance, linumdisplay, spnumdisplay, li3D_legend, viwr_legend
 from .envi_export import enpolymatexport, pregeo
 from .envi_mat import envi_materials, envi_constructions
-from .vi_func import processf, livisimacc, solarPosition, skframe, wr_axes, clearscene, framerange, viparams, selobj, objmode, nodecolour, li_calcob, cmap
+from .vi_func import processf, livisimacc, solarPosition, skframe, wr_axes, clearscene, framerange, viparams, selobj, objmode, nodecolour, li_calcob, cmap, vertarea
 from .vi_chart import chart_disp
 from .vi_gen import vigen
 
@@ -1090,48 +1090,56 @@ class NODE_OT_Shadow(bpy.types.Operator):
         direcs = [mathutils.Vector((-sin(sp[1]), -cos(sp[1]), tan(sp[0]))) for sp in sps if sp[0] > 0]
 
         for o in ocalclist:
+            o['omin'], o['omax'], o['oave'] = [0] * fdiff, [100] * fdiff, [100] * fdiff
             ci = 1
             bm = bmesh.new()
             bm.from_mesh(o.data)
-            bm.transform(o.matrix_world)            
+            bm.transform(o.matrix_world)  
+            obcalcarea = sum([f.calc_area() for f in bm.faces if o.data.materials[f.material_index].mattype == '2'])
+            if bm.faces.layers.int.get('cindex'):
+                    bm.faces.layers.int.remove(bm.faces.layers.int['cindex'])
+            if bm.verts.layers.int.get('cindex'):
+                bm.verts.layers.int.remove(bm.verts.layers.int['cindex'])
             if simnode.cpoint == '0':  
                 bm.faces.layers.int.new('cindex')
                 cindex = bm.faces.layers.int['cindex']
-                for f in [f for f in bm.faces if o.data.materials[f.material_index].mattype == '2']:
+                [bm.faces.layers.float.new('res{}'.format(fi)) for fi in range(fdiff)]
+                cfaces = [f for f in bm.faces if o.data.materials[f.material_index].mattype == '2']
+                for f in [f for f in cfaces]:
                     f[cindex] = ci
                     ci+= 1
-            else:
-                if bm.faces.layers.int.get('cindex'):
-                    bm.faces.layers.int.remove(bm.faces.layers.int['cindex'])
-                if bm.verts.layers.int.get('cindex'):
-                    bm.verts.layers.int.remove(bm.verts.layers.int['cindex'])
+            else:               
                 bm.verts.layers.int.new('cindex')
                 cindex = bm.verts.layers.int['cindex'] 
                 bm.verts.layers.int.new('cindex')
-                
-                for v in [v for v in bm.verts if any([o.data.materials[f.material_index].mattype == '2' for f in v.link_faces])]:
+                [bm.verts.layers.float.new('res{}'.format(fi)) for fi in range(fdiff)]
+                cverts = [v for v in bm.verts if any([o.data.materials[f.material_index].mattype == '2' for f in v.link_faces])]
+                for v in [v for v in cverts]:
                     v[cindex] = ci
                     ci+= 1
-            [obsumarea, obmaxres, obminres] = [[0 for f in range(fdiff)] for x in range(3)]
-
-            for findex, frame in enumerate(range(scene.fs, scene.fe + 1)):
+            
+            for fi, frame in enumerate(range(scene.fs, scene.fe + 1)):
                 scene.frame_set(frame)
-                obsumarea[findex] = sum([f.calc_area() for f in bm.faces])
-
                 if simnode.cpoint == '0':  
-                    bm.faces.layers.float.new('livi{}'.format(frame))
-                    shadres = bm.faces.layers.float['livi{}'.format(frame)]                   
-                    for f in [f for f in bm.faces if o.data.materials[f.material_index].mattype == '2']:
+                    bm.faces.layers.float.new('res{}'.format(fi))
+                    shadres = bm.faces.layers.float['res{}'.format(fi)]  
+                    cfaces = [f for f in bm.faces if o.data.materials[f.material_index].mattype == '2']
+                    for f in cfaces:
                         f[shadres] = 100 * (1 - sum([bpy.data.scenes[0].ray_cast(f.calc_center_median() + (0.05 * f.normal), f.calc_center_median() + 10000*direc)[0] for direc in direcs])/len(direcs))
-                else:                                     
-                    bm.verts.layers.float.new('livi{}'.format(frame))
-                    shadres = bm.verts.layers.float['livi{}'.format(frame)]
-                    for v in [v for v in bm.verts if any([o.data.materials[f.material_index].mattype == '2' for f in v.link_faces])]:
+                    o['omin'][fi], o['omax'][fi], o['oave'][fi] = min([f[shadres] for f in cfaces]), max([f[shadres] for f in cfaces]), sum([f[shadres] for f in cfaces])/len(cfaces)
+                else:                                   
+                    
+                    shadres = bm.verts.layers.float['res{}'.format(fi)]    
+                    cverts = [v for v in bm.verts if any([o.data.materials[f.material_index].mattype == '2' for f in v.link_faces])]
+                    for v in cverts:
                         v[shadres] = 100 * (1 - sum([bpy.data.scenes[0].ray_cast(v.co + 0.01*v.normal, v.co + 10000*direc)[0] for direc in direcs])/len(direcs))
-
+                    o['omin'][fi], o['omax'][fi], o['oave'][fi] = min([v[shadres] for v in cverts]), max([v[shadres] for v in cverts]) , obcalcarea * sum([v[shadres]/vertarea(bm,v) for v in cverts])/len(cverts)
+                simnode['minres']['{}'.format(frame)], simnode['maxres']['{}'.format(frame)], simnode['avres']['{}'.format(frame)] = 0, 100, sum([scene.objects[on]['oave'][fi] for on in scene['shadc']])/len(scene['shadc'])
             bm.transform(o.matrix_world.inverted())
             bm.to_mesh(o.data)
+            bm.free()
 
         scene.frame_set(scene.fs)
         scene['shadc'] = [o.name for o in ocalclist]
+#        simnode['minres'], simnode['maxres'], simnode['avres'] = {'{}'.format(frame) : 100} * fdiff, [100] * fdiff, [sum([scene.objects[on]['oave'][fi] for on in scene['shadc']])/len(scene['shadc']) for fi in range(fdiff)]
         return {'FINISHED'}
