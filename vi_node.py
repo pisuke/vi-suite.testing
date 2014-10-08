@@ -504,7 +504,7 @@ class ViLiSNode(bpy.types.Node, ViNodes):
             if self.run and (connode.bl_label == 'LiVi Basic' and connode.analysismenu == '3'):
                 row = layout.row()
                 row.label('Calculating'+(self.run%10 *'-'))
-            elif self.get('nodeid'):
+            else:
                 row = layout.row()
                 row.operator("node.radpreview", text = 'Preview').nodeid = self['nodeid']
                 if connode.bl_label == 'LiVi Basic' and connode.analysismenu == '3':
@@ -521,7 +521,7 @@ class ViLiSNode(bpy.types.Node, ViNodes):
         return gn
         
     def connodes(self):
-        cn = self.inputs['Context in'].links[0].from_node if self.inputs['Context in'].links and not self.inputs['Context in'].links[0].from_node.use_custom_color else ''
+        cn = self.inputs['Context in'].links[0].from_node if self.inputs['Context in'].links and not self.inputs['Context in'].links[0].from_node.use_custom_color else 0
         return cn
            
     def export(self, op):
