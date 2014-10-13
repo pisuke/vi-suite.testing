@@ -172,7 +172,7 @@ class NODE_OT_SkySelect(bpy.types.Operator, bpy_extras.io_utils.ImportHelper):
 
 class NODE_OT_LiExport(bpy.types.Operator, io_utils.ExportHelper):
     bl_idname = "node.liexport"
-    bl_label = "LiVi basic export"
+    bl_label = "LiVi context export"
     bl_description = "Export the scene to the Radiance file format"
     bl_register = True
     bl_undo = True

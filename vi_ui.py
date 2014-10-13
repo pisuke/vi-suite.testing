@@ -31,6 +31,8 @@ class Vi3DPanel(bpy.types.Panel):
             if scene.ss_disp_panel in (1,2) or scene.li_disp_panel in (1,2):
                 row = layout.row()
                 row.prop(scene, "vi_disp_3d")
+                if scene['LiViContext'] == 'LiVi Compliance':
+                    newrow(layout, 'Sky view:', scene, 'vi_disp_sk')
                 row = layout.row()
                 row.operator("view3d.lidisplay", text="Shadow Display") if scene.resnode == 'VI Shadow Study' else row.operator("view3d.lidisplay", text="Radiance Display")
 
@@ -41,7 +43,6 @@ class Vi3DPanel(bpy.types.Panel):
 
                     if scene.render.engine == 'BLENDER_RENDER' and context.active_object and context.active_object.type == 'MESH':
                         newrow(layout, 'Draw wire:', scene, 'vi_disp_wire')
-#                        row.prop(context.active_object, "show_wire")
                     
                     if int(context.scene.vi_disp_3d) == 1:
                         newrow(layout, "3D Level", scene, "vi_disp_3dlevel")
@@ -59,6 +60,7 @@ class Vi3DPanel(bpy.types.Panel):
                         row.label(text="{:-<60}".format(""))
 
                     if scene.lic_disp_panel == 1:
+                        
                         propdict = OrderedDict([("Compliance Panel", "li_compliance"), ("Asessment organisation:", "li_assorg"), ("Assesment individiual:", "li_assind"), ("Job number:", "li_jobno"), ("Project name:", "li_projname")])
                         for prop in propdict.items():
                             newrow(layout, prop[0], scene, prop[1])

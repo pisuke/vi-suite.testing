@@ -329,6 +329,7 @@ def register():
     Scene.vi_display_rp_off = fprop("", "Surface offset for number display", 0, 1, 0.001)
     Scene.vi_disp_trans = bpy.props.FloatProperty(name = "", description = "Sensing material transparency", min = 0, max = 1, default = 1, update = tupdate)
     Scene.vi_disp_wire = bpy.props.BoolProperty(name = "", description = "Draw wire frame", default = 0, update=wupdate)
+    Scene.vi_disp_sk = bprop("", "Boolean for skyview display",  False)
     Scene.li_projname = sprop("", "Name of the building project", 1024, '')
     Scene.li_assorg = sprop("", "Name of the assessing organisation", 1024, '')
     Scene.li_assind = sprop("", "Name of the assessing individual", 1024, '')

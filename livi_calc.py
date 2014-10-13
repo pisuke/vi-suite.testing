@@ -20,27 +20,21 @@ import bpy, os, subprocess, datetime, bmesh
 from subprocess import PIPE, Popen, STDOUT
 from .vi_func import mtx2vals, retobjs, selobj, facearea
 from . import livi_export
+import numpy
 
-try:
-    import numpy
-    np = 1
-except:
-    np = 0
 
 def radfexport(scene, export_op, connode, geonode, frames):
     for frame in frames:
         livi_export.fexport(scene, frame, export_op, connode, geonode, pause = 1)
 
 def li_calc(calc_op, simnode, connode, geonode, simacc, **kwargs): 
-    scene = bpy.context.scene
+    scene, prange = bpy.context.scene, range(geonode['reslen'])
     frames = range(scene.fs, scene.fe + 1) if not kwargs.get('genframe') else [kwargs['genframe']]
     os.chdir(scene['viparams']['newdir'])
     if os.lstat("{}.rtrace".format(scene['viparams']['filebase'])).st_size == 0:
         calc_op.report({'ERROR'},"There are no materials with the livi sensor option enabled")
     else:
-        if np == 1:
-            (res, svres) = (numpy.zeros([len(frames), geonode['reslen']]), numpy.zeros([len(frames), geonode['reslen']])) if np == 1 else ([[[0 for p in range(geonode['reslen'])] for x in range(len(frames))] for x in range(2)])
-
+        (res, svres) = (numpy.zeros([len(frames), geonode['reslen']]), numpy.zeros([len(frames), geonode['reslen']]))
         for frame in frames:            
             findex = frame - scene.fs if not kwargs.get('genframe') else 0
             if connode.bl_label in ('LiVi Basic', 'LiVi Compliance') or (connode.bl_label == 'LiVi CBDM' and int(connode.analysismenu) < 2):
@@ -65,8 +59,9 @@ def li_calc(calc_op, simnode, connode, geonode, simacc, **kwargs):
             if connode.bl_label == 'LiVi CBDM' and int(connode.analysismenu) > 1:
                 if connode.sourcemenu == '1':
                     connode['vecvals'], vals = mtx2vals(open(connode.mtxname, "r").readlines(), datetime.datetime(2010, 1, 1).weekday(), '')
-                hours = 0
-                sensarray = [[0 for x in range(146)] for y in range(geonode['reslen'])] if np == 0 else numpy.zeros([geonode['reslen'], 146])
+                vecvals = numpy.array(connode['vecvals'])
+                
+                sensarray = numpy.zeros((len(prange), 146))
                 oconvcmd = "oconv -w - > {0}-ws.oct".format(scene['viparams']['filebase'])
                 Popen(oconvcmd, shell = True, stdin = PIPE, stdout=PIPE, stderr=STDOUT).communicate(input = (connode['whitesky']+geonode['radfiles'][frame]).encode('utf-8'))
                 senscmd = scene['viparams']['cat']+scene['viparams']['filebase']+".rtrace | rcontrib -w  -h -I -fo -bn 146 {} -n {} -f tregenza.cal -b tbin -m sky_glow {}-ws.oct".format(simnode['radparams'], scene['viparams']['nproc'], scene['viparams']['filebase'])
@@ -78,62 +73,30 @@ def li_calc(calc_op, simnode, connode, geonode, simacc, **kwargs):
                         sensarray[li] = [179*((decline[v]*0.265)+ (decline[v+1]*0.67) + (decline[v+2]*0.065)) for v in range(0, 438, 3)]
                     elif connode.analysismenu == '3':
                         sensarray[li] = [sum(decline[v:v+3]) for v in range(0, 438, 3)]
-
-                for l, readings in enumerate(connode['vecvals']):
-                    if connode.analysismenu == '3' or (connode.cbdm_start_hour <= readings[:][0] < connode.cbdm_end_hour and readings[:][1] < connode['wd']):
-                        finalillu = [numpy.sum([numpy.multiply(sensarray[f], readings[2:])]) for f in range(geonode['reslen'])] if np == 1 else [sum([a*b for a,b in zip(sensarray[f],readings[2:])]) for f in range(geonode['reslen'])]
-                        hours += 1
-                        if connode.analysismenu == '2':
-                            res[findex] = numpy.sum([res[findex], [reading >= connode.dalux for reading in finalillu]], axis = 0) if np == 1 else [res[findex][k] + (0, 1)[finalillu[k] >= connode.dalux] for k in range(len(finalillu))]
-
-                        elif connode.analysismenu == '3':
-                            if np ==1:
-                                if hours == 1:
-                                    reswatt = numpy.zeros((len(frames), len(connode['vecvals']), geonode['reslen'])) 
-                                reswatt[findex][l] = finalillu
-                                [numpy.append(res[findex][i], finalillu[i]) for i in range(len(finalillu))]                                
-                            else:
-                                res[findex].append(finalillu)             
-                        elif connode.analysismenu == '4':
-                            res[findex] = numpy.sum([res[findex], [connode.daauto >= reading >= connode.dasupp for reading in finalillu]], axis = 0) if np == 1 else [res[findex][k] + (0, 1)[connode.daauto >= finalillu[k] >= connode.dasupp] for k in range(len(finalillu))]
-                
                 if connode.analysismenu in ('2', '4'):
-                    if hours != 0:
-                        res[findex] = res[frame]*100/hours if np == 1 else [rf*100/hours for rf in res[findex][0]]
+                    vecvals = numpy.array([vv[2:] for vv in vecvals if connode.cbdm_start_hour <= vv[0] < connode.cbdm_end_hour and vv[1] < connode['wd']])
+                    hours = len(vecvals)
+                elif connode.analysismenu == '3':
+                    vecvals = [vv[2:] for vv in vecvals]
+                    hours = len(vecvals)
+
+                finalillu = numpy.array([[numpy.sum(sensarray[f] * vv) for vv in vecvals] for f in prange])
+                if connode.analysismenu == '2':
+                    res[findex] = [numpy.sum([i >= connode.dalux for i in f])*100/hours for f in finalillu]
+                elif connode.analysismenu == '3':
+                    res[findex] = finalillu
+                elif connode.analysismenu == '4':
+                    res[findex] = [numpy.sum([connode.daauto >= i >= connode.dasupp for i in f])*100/hours for f in finalillu]
+
+                if connode.analysismenu in ('2', '4'):
                     with open(os.path.join(scene['viparams']['newdir'], connode['resname']+"-"+str(frame)+".res"), "w") as daresfile:
                         [daresfile.write("{:.2f}\n".format(r)) for r in res[findex]]
-                
-                if connode.analysismenu == '3':
-                    res = reswatt
 
-#            if connode.analysismenu != '3' or connode.bl_label != 'LiVi CBDM':
-#                fi, vi = 0, 0
-#                for geo in retobjs('livic'):
-#                    lenv, lenf = len(geo['cverts']), len(geo['cfaces'])
-#                    sensearea = sum(geo['lisenseareas'])
-#                    if not sensearea:
-#                        calc_op.report({'INFO'}, geo.name+" has a livi sensor material associated with, but not assigned to any faces")
-#                    else: 
-#                        if geonode.cpoint == '1':                            
-#                            weightres = sum([res[findex][ri] * area for ri, area in zip(range(vi, vi+lenv), geo['lisenseareas'])])
-#                            obres = res[findex][vi:vi+lenv]
-#                            vi += lenv
-#                        else:
-#                            weightres = sum([res[findex][ri] * area for ri, area in zip(range(fi, fi+lenf), geo['lisenseareas'])])
-#                            obres = res[findex][fi:fi+lenf]
-#                            fi += lenf
-#                                                                   
-#                        if (frame == scene.fs and not kwargs.get('genframe')) or (kwargs.get('genframe') and kwargs['genframe'] == scene.frame_start):
-#                            o['oave'], geo['omax'], geo['omin'], geo['oreslist'] = {}, {}, {}, {}
-#    
-#                        o['oave'][str(frame)] = weightres/sensearea
-#                        o['omax'][str(frame)] = max(obres)
-#                        o['omin'][str(frame)] = min(obres)
-#                        o['oreslist'][str(frame)] = obres 
-                                   
+#                if connode.analysismenu == '3':
+#                    res = reswatt
+                                  
         if not kwargs:           
             resapply(calc_op, res, svres, simnode, connode, geonode)
-#            skframe('', scene, [ob for ob in scene.objects if ob.licalc] , simnode['Animation'])
         else:
             return(res[0])
    
@@ -142,28 +105,16 @@ def resapply(calc_op, res, svres, simnode, connode, geonode):
     simnode['maxres'], simnode['minres'], simnode['avres'] = {}, {}, {}
     if connode.analysismenu != '3' or connode.bl_label != 'LiVi CBDM':
         for i in range(scene.fs, scene.fe + 1):
-#        if np == 1:
             simnode['maxres'][str(i)] = numpy.amax(res[i])
             simnode['minres'][str(i)] = numpy.amin(res[i])
             simnode['avres'][str(i)] = numpy.average(res[i])
-#        else:
-#            simnode['maxres'] = [max(res[i]) for i in range(scene.fs, scene.fe + 1)]
-#            simnode['minres'] = [min(res[i]) for i in range(scene.fs, scene.fe + 1)]
-#            simnode['avres'] = [sum(res[i])/len(res[i]) for i in range(scene.fs, scene.fe + 1)]
-    
         crits = []
         dfpass = [0 for f in range(scene.fs, scene.fe + 1)]
         edfpass = [0 for f in range(scene.fs, scene.fe + 1)]
         
         for fr, frame in enumerate(range(scene.fs, scene.fe + 1)):
             scene.frame_set(frame)
-            fi = 0
-            dftotarea, dfpassarea, edfpassarea, edftotarea, mcol_i, pstart, fsv, sof, eof = 0, 0, 0, 0, 0, 0, 0, 0, 0
-            rgb, lcol_i = [], []
-#            if connode.bl_label != 'LiVi CBDM' or connode.analysismenu != '3':
-#                for i in range(len(res[fr])):
-#                    h = 0.75*(1-(res[fr][i]-min(simnode['minres']))/(max(simnode['maxres']) + 0.01 - min(simnode['minres'])))
-#                    rgb.append(colorsys.hsv_to_rgb(h, 1.0, 1.0))
+            dftotarea, dfpassarea, edfpassarea, edftotarea, pstart, sof, eof = 0, 0, 0, 0, 0, 0, 0
         
             if bpy.context.active_object and bpy.context.active_object.hide == 'False':
                 bpy.ops.object.mode_set()
@@ -174,56 +125,33 @@ def resapply(calc_op, res, svres, simnode, connode, geonode):
                 oareas = o['lisenseareas']
                 oarea = sum(oareas)
                 lenpoints = len(o['cfaces']) if geonode.cpoint == '0' else len(o['cverts'])
-                
-#                geos = [geo.data.polygons[fi] for fi in geo['cfaces']] if geonode.cpoint == '0' else [geo.data.vertices[vi] for vi in geo['cverts']]
 
                 if o.get('wattres'):
                     del o['wattres']
                 
                 selobj(scene, o)
-
-                
                 bm = bmesh.new()
                 bm.from_mesh(o.data)
-                sfaces = [face for face in bm.faces if o.data.materials[face.material_index].mattype == '1']
                 pend, passarea = pstart + lenpoints, 0
-                
-                
-                
-#                bpy.ops.mesh.vertex_color_add()
-#                geo.data.vertex_colors[-1].name = str(frame)
-#                vertexColour = geo.data.vertex_colors[str(frame)]
                 mat = [matslot.material for matslot in o.material_slots if matslot.material.mattype == '1'][0]
-#                mcol_i = len(tuple(set(lcol_i)))
 
-                
                 if geonode.cpoint == '1':
                     cindex = bm.verts.layers.int['cindex']
-#                    ores = [res[fr][v[rtindex] - 1] for v in bm.verts if v[rtindex] > 0]
-#                    o['oave'], o['omax'], o['omin'] = sum(ores)/len(ores), max(ores), min(ores)
-#                    if not bm.verts.layers.float.get('res{}'.format(frame)):
                     bm.verts.layers.float.new('res{}'.format(frame))
                     livires = bm.verts.layers.float['res{}'.format(frame)]
                     if connode.bl_label == 'LiVi Compliance':
-#                        if not bm.verts.layers.float.get('sv{}'.format(frame)):
                         bm.verts.layers.float.new('sv{}'.format(frame))
                         sv = bm.verts.layers.float['sv{}'.format(frame)]
                     for v in [v for v in bm.verts if v[cindex] > 0]:
                         v[livires] = res[fr][v[cindex] - 1]
                         if connode.bl_label == 'LiVi Compliance':
                             v[sv] = svres[fr][v[cindex] - 1]
-#                    reslist = [vert[livires] for vert in bm.verts if vert[rtindex] > 0]
-#                    reslist = ores
     
                 elif geonode.cpoint == '0':
                     cindex = bm.faces.layers.int['cindex']
-#                    ores = [res[fr][f[rtindex] - 1] for f in bm.faces if f[rtindex] > 0]
-#                    o['oave'], o['omax'], o['omin'] = sum(ores)/len(ores), max(ores), min(ores)
-#                    if not bm.faces.layers.float.get('res{}'.format(frame)):
                     bm.faces.layers.float.new('res{}'.format(frame))
                     livires = bm.faces.layers.float['res{}'.format(frame)]
                     if connode.bl_label == 'LiVi Compliance':
-#                        if not bm.verts.layers.float.get('sv{}'.format(frame)):
                         bm.faces.layers.float.new('sv{}'.format(frame))
                         sv = bm.faces.layers.float['sv{}'.format(frame)]
                     for f in [f for f in bm.faces if f[cindex] > 0]:
@@ -233,28 +161,8 @@ def resapply(calc_op, res, svres, simnode, connode, geonode):
                 bm.to_mesh(o.data)
                 bm.free()
 
-
                 if connode.bl_label == 'LiVi Compliance':
                     o['compmat'] = mat.name
-#                    if connode.analysismenu == '1':
-#                        bpy.ops.mesh.vertex_color_add()
-#                        o.data.vertex_colors[-1].name = '{}sv'.format(frame)
-#                        vertexColour = o.data.vertex_colors['{}sv'.format(frame)]
-#                        for face in sfaces:
-#                            if geonode.cpoint == '1':
-#                                cvtup = tuple(o['cverts'])
-#                                for loop_index in face.loop_indices:
-#                                    v = o.data.loops[loop_index].vertex_index
-#                                    if v in cvtup:
-#                                        col_i = cvtup.index(v)
-#                                    lcol_i.append(col_i)
-#                                    vertexColour.data[loop_index].color = rgb[col_i+mcol_i]
-#
-#                            elif geonode.cpoint == '0':
-#                                for loop_index in face.loop_indices:
-#                                    vertexColour.data[loop_index].color = (0, 1, 0) if svres[frame][fsv] > 0 else (1, 0, 0)
-#                                fsv += 1
-
                     if fr == 0:
                         comps, ecomps =  [[[] * fra for fra in range(scene.fs, scene.fe + 1)] for x in range(2)]
                         if connode.analysismenu == '0':

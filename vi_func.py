@@ -223,7 +223,7 @@ def clearscene(scene, op):
         if ob.get('lires'):
             scene.objects.unlink(ob)       
         if scene.get('livig') and ob.name in scene['livig']:
-            v, f = 0, 0             
+            v, f, svv, svf = [0] * 4             
             if 'export' in op.name or 'simulation' in op.name:
                 bm = bmesh.new()
                 bm.from_mesh(ob.data)
@@ -241,6 +241,14 @@ def clearscene(scene, op):
                         livires = bm.faces.layers.float['res{}'.format(f)]
                         bm.faces.layers.float.remove(livires)
                         f += 1
+                    while bm.verts.layers.float.get('svres{}'.format(v)):
+                        livires = bm.verts.layers.float['svres{}'.format(v)]
+                        bm.verts.layers.float.remove(livires)
+                        svv += 1
+                    while bm.faces.layers.float.get('svres{}'.format(f)):
+                        livires = bm.faces.layers.float['svres{}'.format(f)]
+                        bm.faces.layers.float.remove(livires)
+                        svf += 1
                 bm.to_mesh(ob.data)
                 bm.free()
 #        selobj(scene, ob)

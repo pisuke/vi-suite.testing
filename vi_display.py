@@ -39,9 +39,6 @@ def li_display(simnode, connode, geonode):
     obcalclist = []
     (rcol, mtype) =  ('hot', 'livi') if 'LiVi' in simnode.bl_label else ('grey', 'shad')
     cmap(rcol)
-#        'Shadow' in simnode.bl_label
-#    else:
- #       cmap('grey')
 
     for geo in scene.objects:
         scene.objects.active = geo
@@ -63,9 +60,12 @@ def li_display(simnode, connode, geonode):
     
     for i, o in enumerate([o for o in scene.objects if o.name in scene['{}c'.format(mtype)]]):
         selobj(scene, o)
+        bpy.ops.object.duplicate(linked = False)
+        ores = bpy.context.active_object
+        ores.name = o.name+"res"
         bm = bmesh.new()
         bm.from_mesh(o.data)
-        bm.transform(o.matrix_world)
+#        bm.transform(o.matrix_world)
         
         if cp == '0':  
             cindex = bm.faces.layers.int['cindex']
@@ -78,14 +78,17 @@ def li_display(simnode, connode, geonode):
             for v in [v for v in bm.verts if v[cindex] < 1]:
                 bm.verts.remove(v)
 
-        oresm = bpy.data.meshes.new(o.name+"res") 
-        bm.to_mesh(oresm)
-        ores = bpy.data.objects.new(o.name+"res", oresm)
+#        oresm = bpy.data.meshes.new(o.name+"res") 
+        bm.to_mesh(ores.data)
+#        ores = bpy.data.objects.new(o.name+"res", oresm)
         obreslist.append(ores)
         ores['omax'], ores['omin'], ores['oave'], ores['lires'], ores['cp']  = {}, {}, {}, 1, cp
-        scene.objects.link(ores)
+#        scene.objects.link(ores)
         selobj(scene, ores)
-        
+
+        while ores.material_slots:
+            bpy.ops.object.material_slot_remove()
+
         for matname in ['{}#{}'.format(mtype, i) for i in range(20)]:
             if bpy.data.materials[matname] not in ores.data.materials[:]:
                 bpy.ops.object.material_slot_add()
@@ -95,16 +98,28 @@ def li_display(simnode, connode, geonode):
             if fr == 0 and scene.vi_disp_3d == 1 and cp == '0':
                 for face in bmesh.ops.extrude_discrete_faces(bm, faces = bm.faces)['faces']:
                     face.select = True
-            livires = bm.faces.layers.float['res{}'.format(fr)] if cp == '0' else bm.verts.layers.float['res{}'.format(fr)]
-            vals = array([(f[livires] - min(simnode['minres'].values()))/(max(simnode['maxres'].values()) - min(simnode['minres'].values())) for f in bm.faces]) if cp == '0' else \
-            ([(sum([vert[livires] for vert in f.verts])/len(f.verts) - min(simnode['minres'].values()))/(max(simnode['maxres'].values()) - min(simnode['minres'].values())) for f in bm.faces])
-            bins = array([0.05*i for i in range(1, 20)])
-            nmatis = digitize(vals, bins)
-            for fi, f in enumerate(bm.faces):
-                f.material_index = nmatis[fi]
+            
+            if connode.bl_label == 'LiVi Compliance' and scene.vi_disp_sk:
+                sv = bm.faces.layers.float['sv{}'.format(fr)] if cp == '0' else bm.verts.layers.float['sv{}'.format(fr)]
+                for fi, f in enumerate(bm.faces):
+                    if cp == '0':
+                        f.material_index = 11 if f[sv] > 0 else 19
+                    if cp == '1':
+                        faceres = sum([v[sv] for v in bm.verts])/len(f.verts)
+                        f.material_index = 11 if faceres > 0 else 19
+                oreslist = [f[sv] for f in bm.faces] if cp == '0' else [v[sv] for v in bm.verts]
+            else:
+                livires = bm.faces.layers.float['res{}'.format(fr)] if cp == '0' else bm.verts.layers.float['res{}'.format(fr)]
+                vals = array([(f[livires] - min(simnode['minres'].values()))/(max(simnode['maxres'].values()) - min(simnode['minres'].values())) for f in bm.faces]) if cp == '0' else \
+                ([(sum([vert[livires] for vert in f.verts])/len(f.verts) - min(simnode['minres'].values()))/(max(simnode['maxres'].values()) - min(simnode['minres'].values())) for f in bm.faces])
+                bins = array([0.05*i for i in range(1, 20)])
+                nmatis = digitize(vals, bins)
+                for fi, f in enumerate(bm.faces):
+                    f.material_index = nmatis[fi]
+                oreslist = [f[livires] for f in bm.faces] if cp == '0' else [v[livires] for v in bm.verts]
             bm.to_mesh(ores.data)
             [ores.data.polygons[fi].keyframe_insert('material_index', frame=frame) for fi, f in enumerate(bm.faces)]        
-            oreslist = [f[livires] for f in bm.faces] if cp == '0' else [v[livires] for v in bm.verts]
+#            oreslist = [f[livires] for f in bm.faces] if cp == '0' else [v[livires] for v in bm.verts]
             ores['omax'][str(frame)], ores['omin'][str(frame)], ores['oave'][str(frame)] = max(oreslist), min(oreslist), sum(oreslist)/len(oreslist)
         
         bm.free()
@@ -193,6 +208,10 @@ def linumdisplay(disp_op, context, simnode, connode, geonode):
         bm = bmesh.new()
         bm.from_mesh(obm)
         bm.transform(omw)
+        
+
+#                
+#            else:
         
         if cp == "0":
             livires = bm.faces.layers.float['res{}'.format(scene.frame_current)]
@@ -389,7 +408,7 @@ def li_compliance(self, context, connode):
             lencrit = 1 + len(o['crit'])
             drawpoly(100, height - 70, 900, height - 70  - (lencrit)*25)
             drawloop(100, height - 70, 900, height - 70  - (lencrit)*25)
-            mat = [m for m in bpy.context.active_object.data.materials if m.mattype == '1'][0]
+            mat = bpy.data.materials[o['compmat']]
             if connode.analysismenu == '0':
                 buildspace = ('', '', (' - Public/Staff', ' - Patient')[int(mat.hspacemenu)], (' - Kitchen', ' - Living/Dining/Study', ' - Communal')[int(mat.brspacemenu)], (' - Sales', ' - Office')[int(mat.respacemenu)], '')[int(connode.bambuildmenu)]
             elif connode.analysismenu == '1':
