@@ -63,6 +63,8 @@ def li_display(simnode, connode, geonode):
         bpy.ops.object.duplicate(linked = False)
         ores = bpy.context.active_object
         ores.name = o.name+"res"
+        cv = ores.cycles_visibility
+        cv.diffuse, cv.glossy, cv.transmission, cv.scatter, cv.shadow = 0, 0, 0, 0, 0
         bm = bmesh.new()
         bm.from_mesh(o.data)
 #        bm.transform(o.matrix_world)
@@ -78,12 +80,9 @@ def li_display(simnode, connode, geonode):
             for v in [v for v in bm.verts if v[cindex] < 1]:
                 bm.verts.remove(v)
 
-#        oresm = bpy.data.meshes.new(o.name+"res") 
         bm.to_mesh(ores.data)
-#        ores = bpy.data.objects.new(o.name+"res", oresm)
         obreslist.append(ores)
         ores['omax'], ores['omin'], ores['oave'], ores['lires'] = {}, {}, {}, 1
-#        scene.objects.link(ores)
         selobj(scene, ores)
 
         while ores.material_slots:
@@ -119,7 +118,6 @@ def li_display(simnode, connode, geonode):
                 oreslist = [f[livires] for f in bm.faces] if scene['cp'] == '0' else [v[livires] for v in bm.verts]
             bm.to_mesh(ores.data)
             [ores.data.polygons[fi].keyframe_insert('material_index', frame=frame) for fi, f in enumerate(bm.faces)]        
-#            oreslist = [f[livires] for f in bm.faces] if cp == '0' else [v[livires] for v in bm.verts]
             ores['omax'][str(frame)], ores['omin'][str(frame)], ores['oave'][str(frame)] = max(oreslist), min(oreslist), sum(oreslist)/len(oreslist)
         
         bm.free()
