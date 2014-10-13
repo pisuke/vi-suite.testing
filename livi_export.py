@@ -21,12 +21,6 @@ from math import sin, cos, tan, pi
 from subprocess import PIPE, Popen, STDOUT
 from .vi_func import retsky, retobj, retmesh, clearscene, solarPosition, mtx2vals, retobjs, selobj, face_centre, selmesh, vertarea, facearea, li_calcob, radpoints
 
-try:
-    import numpy
-    np = 1
-except:
-    np = 0
-
 def radgexport(export_op, node, **kwargs):
     scene = bpy.context.scene
     scene['liparams'] = {'cp': node.cpoint}
@@ -234,7 +228,7 @@ def radcexport(export_op, node, locnode, geonode):
                 sunexport(scene, node, locnode, frame - scene.fs)
                 if node['skynum'] < 2 and node.analysismenu != '2':
                     if frame == scene.frame_start:
-                        if 'Sun' in [ob for ob in scene.objects if ob.get('VIType')]:
+                        if 'SUN' in [ob.data.type for ob in scene.objects if ob.get('VIType')]:
                             sun = [ob for ob in scene.objects if ob.get('VIType') == 'Sun'][0]
                         else:
                             bpy.ops.object.lamp_add(type='SUN')

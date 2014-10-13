@@ -33,7 +33,7 @@ def ss_display():
     pass
 
 def li_display(simnode, connode, geonode):
-    cp = simnode.cpoint if not geonode else geonode.cpoint
+#    cp = simnode.cpoint if not geonode else geonode.cpoint
     scene = bpy.context.scene
     obreslist = []
     obcalclist = []
@@ -67,13 +67,13 @@ def li_display(simnode, connode, geonode):
         bm.from_mesh(o.data)
 #        bm.transform(o.matrix_world)
         
-        if cp == '0':  
+        if scene['cp'] == '0':  
             cindex = bm.faces.layers.int['cindex']
             for f in [f for f in bm.faces if f[cindex] < 1]:
                 bm.faces.remove(f)
             [bm.verts.remove(v) for v in bm.verts if not v.link_faces]
 
-        elif cp == '1':
+        elif scene['cp'] == '1':
             cindex =  bm.verts.layers.int['cindex']
             for v in [v for v in bm.verts if v[cindex] < 1]:
                 bm.verts.remove(v)
@@ -82,7 +82,7 @@ def li_display(simnode, connode, geonode):
         bm.to_mesh(ores.data)
 #        ores = bpy.data.objects.new(o.name+"res", oresm)
         obreslist.append(ores)
-        ores['omax'], ores['omin'], ores['oave'], ores['lires'], ores['cp']  = {}, {}, {}, 1, cp
+        ores['omax'], ores['omin'], ores['oave'], ores['lires'] = {}, {}, {}, 1
 #        scene.objects.link(ores)
         selobj(scene, ores)
 
@@ -95,28 +95,28 @@ def li_display(simnode, connode, geonode):
                 ores.material_slots[-1].material = bpy.data.materials[matname]
         
         for fr, frame in enumerate(range(scene.fs, scene.fe + 1)):  
-            if fr == 0 and scene.vi_disp_3d == 1 and cp == '0':
+            if fr == 0 and scene.vi_disp_3d == 1 and scene['cp'] == '0':
                 for face in bmesh.ops.extrude_discrete_faces(bm, faces = bm.faces)['faces']:
                     face.select = True
             
-            if connode.bl_label == 'LiVi Compliance' and scene.vi_disp_sk:
-                sv = bm.faces.layers.float['sv{}'.format(fr)] if cp == '0' else bm.verts.layers.float['sv{}'.format(fr)]
+            if scene['visimcontext'] == 'LiVi Compliance' and scene.vi_disp_sk:
+                sv = bm.faces.layers.float['sv{}'.format(frame)] if scene['cp'] == '0' else bm.verts.layers.float['sv{}'.format(frame)]
                 for fi, f in enumerate(bm.faces):
-                    if cp == '0':
+                    if scene['cp'] == '0':
                         f.material_index = 11 if f[sv] > 0 else 19
-                    if cp == '1':
+                    if scene['cp'] == '1':
                         faceres = sum([v[sv] for v in bm.verts])/len(f.verts)
                         f.material_index = 11 if faceres > 0 else 19
-                oreslist = [f[sv] for f in bm.faces] if cp == '0' else [v[sv] for v in bm.verts]
+                oreslist = [f[sv] for f in bm.faces] if scene['cp'] == '0' else [v[sv] for v in bm.verts]
             else:
-                livires = bm.faces.layers.float['res{}'.format(fr)] if cp == '0' else bm.verts.layers.float['res{}'.format(fr)]
-                vals = array([(f[livires] - min(simnode['minres'].values()))/(max(simnode['maxres'].values()) - min(simnode['minres'].values())) for f in bm.faces]) if cp == '0' else \
+                livires = bm.faces.layers.float['res{}'.format(frame)] if scene['cp'] == '0' else bm.verts.layers.float['res{}'.format(frame)]
+                vals = array([(f[livires] - min(simnode['minres'].values()))/(max(simnode['maxres'].values()) - min(simnode['minres'].values())) for f in bm.faces]) if scene['cp'] == '0' else \
                 ([(sum([vert[livires] for vert in f.verts])/len(f.verts) - min(simnode['minres'].values()))/(max(simnode['maxres'].values()) - min(simnode['minres'].values())) for f in bm.faces])
                 bins = array([0.05*i for i in range(1, 20)])
                 nmatis = digitize(vals, bins)
                 for fi, f in enumerate(bm.faces):
                     f.material_index = nmatis[fi]
-                oreslist = [f[livires] for f in bm.faces] if cp == '0' else [v[livires] for v in bm.verts]
+                oreslist = [f[livires] for f in bm.faces] if scene['cp'] == '0' else [v[livires] for v in bm.verts]
             bm.to_mesh(ores.data)
             [ores.data.polygons[fi].keyframe_insert('material_index', frame=frame) for fi, f in enumerate(bm.faces)]        
 #            oreslist = [f[livires] for f in bm.faces] if cp == '0' else [v[livires] for v in bm.verts]
@@ -179,7 +179,7 @@ def linumdisplay(disp_op, context, simnode, connode, geonode):
     bgl.glColor4f(*scene.vi_display_rp_fc[:])
     blf.size(0, scene.vi_display_rp_fs, 72)
     bgl.glColor3f = scene.vi_display_rp_fc
-    cp = geonode.cpoint if geonode else simnode.cpoint
+#    cp = geonode.cpoint if geonode else simnode.cpoint
     fn = context.scene.frame_current - scene.fs
     mid_x, mid_y, width, height = viewdesc(context)
     view_mat = context.space_data.region_3d.perspective_matrix
@@ -208,12 +208,8 @@ def linumdisplay(disp_op, context, simnode, connode, geonode):
         bm = bmesh.new()
         bm.from_mesh(obm)
         bm.transform(omw)
-        
 
-#                
-#            else:
-        
-        if cp == "0":
+        if scene['cp'] == "0":
             livires = bm.faces.layers.float['res{}'.format(scene.frame_current)]
             if not scene.vi_disp_3d:
                 faces = [f for f in bm.faces if not f.hide and (f.calc_center_median() - view_location)*vw < 0]
@@ -366,7 +362,6 @@ def li_compliance(self, context, connode):
     def space_compliance(os):
         frame, buildspace, pfs, epfs, lencrit = scene.frame_current, '', [], [], 0
         for o in os:
-            print(o.name)
             mat = bpy.data.materials[o['compmat']]
             o['cr4'] = [('fail', 'pass')[int(com)] for com in o['comps'][frame][:][::2]]
             o['cr6'] = [cri[4] for cri in o['crit']]

@@ -39,11 +39,11 @@ class NODE_OT_LiGExport(bpy.types.Operator):
             viparams(scene)
             objmode()
             node = bpy.data.node_groups[self.nodeid.split('@')[1]].nodes[self.nodeid.split('@')[0]]
-            node.export(context)
+            node.export(scene)
             scene.frame_start, bpy.data.node_groups[self.nodeid.split('@')[1]].use_fake_user = 0, 1
             scene.frame_set(0)
             radgexport(self, node)
-            node.exported = True
+#            node.exported = True
             node.bl_label = node.bl_label[1:] if node.bl_label[0] == '*' else node.bl_label
             node.outputs['Geometry out'].hide = False
             return {'FINISHED'}
@@ -246,6 +246,7 @@ class NODE_OT_RadPreview(bpy.types.Operator, io_utils.ExportHelper):
                 time.sleep(0.1)
                 if rvurun.poll() is not None:                    
                     for line in rvurun.stderr:
+                        print(line)
                         if 'view up parallel to view direction' in line.decode():
                             self.report({'ERROR'}, "Camera connot point directly upwards")
                             return {'CANCELLED'}
@@ -351,6 +352,7 @@ class NODE_OT_LiViCalc(bpy.types.Operator):
         clearscene(scene, self)
         simnode = bpy.data.node_groups[self.nodeid.split('@')[1]].nodes[self.nodeid.split('@')[0]]
         connode, geonode = simnode.export(self.bl_label)
+        scene['visimcontext'] = connode.bl_label
         
         for frame in range(scene.fs, scene.fe + 1):
             if not simnode.edit_file:
@@ -359,7 +361,6 @@ class NODE_OT_LiViCalc(bpy.types.Operator):
                 self.report({'ERROR'}, "There is no saved radiance input file. Turn off the edit file option")
                 return {'CANCELLED'}
             createoconv(scene, frame, self)
-        scene['LiViContext'] = connode.bl_label
        
         if connode.bl_label == 'LiVi Basic':
             geogennode = geonode.inputs['Generative in'].links[0].from_node if geonode.inputs['Generative in'].links else 0
@@ -696,6 +697,7 @@ class NODE_OT_EnSim(bpy.types.Operator, io_utils.ExportHelper):
             
     def invoke(self, context, event):
         scene = context.scene
+        context.scene['visimcontext'] = 'EnVi'
         wm = context.window_manager
         self._timer = wm.event_timer_add(1, context.window)
         wm.modal_handler_add(self)
@@ -758,7 +760,8 @@ class NODE_OT_SunPath(bpy.types.Operator):
         node.export()
         scene, scene.resnode, scene.restree = context.scene, node.name, self.nodeid.split('@')[1]
         scene.vi_display, scene.sp_disp_panel, scene.li_disp_panel, scene.lic_disp_panel, scene.en_disp_panel, scene.ss_disp_panel, scene.wr_disp_panel = 1, 1, 0, 0, 0, 0, 0
-        bpy.context.scene.cursor_location = (0.0, 0.0, 0.0)
+        context.scene['visimcontext'] = 'SunPath'
+        scene.cursor_location = (0.0, 0.0, 0.0)
         matdict = {'SolEquoRings': (1, 0, 0), 'HourRings': (1, 1, 0), 'SPBase': (1, 1, 1), 'Sun': (1, 1, 1)}
         for mat in [mat for mat in matdict.items() if mat[0] not in bpy.data.materials]:
             bpy.data.materials.new(mat[0])
@@ -944,6 +947,7 @@ class NODE_OT_WindRose(bpy.types.Operator):
             scene, scene.resnode, scene.restree = context.scene, simnode.name, self.nodeid.split('@')[1]
             viparams(scene)
             scene.vi_display, scene.sp_disp_panel, scene.li_disp_panel, scene.lic_disp_panel, scene.en_disp_panel, scene.ss_disp_panel, scene.wr_disp_panel = 1, 0, 0, 0, 0, 0, 1
+            context.scene['visimcontext'] = 'Wind'
 
             with open(locnode.weather, "r") as epwfile:
                 if simnode.startmonth > simnode.endmonth:
@@ -1058,6 +1062,7 @@ class NODE_OT_Shadow(bpy.types.Operator):
     def invoke(self, context, event):
         scene = context.scene
         ocalclist = [ob for ob in scene.objects if ob.type == 'MESH' and not ob.hide and len([f for f in ob.data.polygons if ob.data.materials[f.material_index].mattype == '2'])]
+        
         if not ocalclist:
             self.report({'ERROR'},"No objects have a VI Shadow material attached.")
             return
@@ -1066,7 +1071,8 @@ class NODE_OT_Shadow(bpy.types.Operator):
         scene.vi_display, scene.sp_disp_panel, scene.li_disp_panel, scene.lic_disp_panel, scene.en_disp_panel, scene.ss_disp_panel, scene.wr_disp_panel = 1, 0, 0, 0, 0, 1, 0
         clearscene(scene, self)
         simnode = bpy.data.node_groups[self.nodeid.split('@')[1]].nodes[self.nodeid.split('@')[0]]
-        simnode.export()
+        scene['shadc'], scene['visimcontext'] = [o.name for o in ocalclist], 'Shadow'
+        simnode.export(scene)
         (scene.fs, scene.fe) = (scene.frame_current, scene.frame_current) if simnode.animmenu == 'Static' else (scene.frame_start, scene.frame_end)
         cmap('grey')
 
@@ -1078,8 +1084,8 @@ class NODE_OT_Shadow(bpy.types.Operator):
         if simnode['Animation'] == 'Static':
             scmaxres, scminres, scavres, scene.fs = [0], [100], [0], scene.frame_current
         else:
-            (scmaxres, scminres, scavres) = [[x] * scene.frame_end - scene.frame_start + 1 for x in (0, 100, 0)]
-            
+            (scmaxres, scminres, scavres) = [[x] * (scene.frame_end - scene.frame_start + 1) for x in (0, 100, 0)]
+        frange = range(scene.fs, scene.fe + 1)    
         fdiff =  1 if simnode['Animation'] == 'Static' else scene.frame_end - scene.frame_start + 1
         time = datetime.datetime(datetime.datetime.now().year, simnode.startmonth, 1, simnode.starthour - 1)
         y =  datetime.datetime.now().year if simnode.endmonth >= simnode.startmonth else datetime.datetime.now().year + 1
@@ -1103,7 +1109,7 @@ class NODE_OT_Shadow(bpy.types.Operator):
             if simnode.cpoint == '0':  
                 bm.faces.layers.int.new('cindex')
                 cindex = bm.faces.layers.int['cindex']
-                [bm.faces.layers.float.new('res{}'.format(fi)) for fi in range(fdiff)]
+                [bm.faces.layers.float.new('res{}'.format(fi)) for fi in frange]
                 cfaces = [f for f in bm.faces if o.data.materials[f.material_index].mattype == '2']
                 for f in [f for f in cfaces]:
                     f[cindex] = ci
@@ -1112,24 +1118,23 @@ class NODE_OT_Shadow(bpy.types.Operator):
                 bm.verts.layers.int.new('cindex')
                 cindex = bm.verts.layers.int['cindex'] 
                 bm.verts.layers.int.new('cindex')
-                [bm.verts.layers.float.new('res{}'.format(fi)) for fi in range(fdiff)]
+                [bm.verts.layers.float.new('res{}'.format(fi)) for fi in frange]
                 cverts = [v for v in bm.verts if any([o.data.materials[f.material_index].mattype == '2' for f in v.link_faces])]
                 for v in [v for v in cverts]:
                     v[cindex] = ci
                     ci+= 1
             
-            for fi, frame in enumerate(range(scene.fs, scene.fe + 1)):
+            for fi, frame in enumerate(frange):
                 scene.frame_set(frame)
                 if simnode.cpoint == '0':  
-                    bm.faces.layers.float.new('res{}'.format(fi))
-                    shadres = bm.faces.layers.float['res{}'.format(fi)]  
+#                    bm.faces.layers.float.new('res{}'.format(frame))
+                    shadres = bm.faces.layers.float['res{}'.format(frame)]  
                     cfaces = [f for f in bm.faces if o.data.materials[f.material_index].mattype == '2']
                     for f in cfaces:
                         f[shadres] = 100 * (1 - sum([bpy.data.scenes[0].ray_cast(f.calc_center_median() + (0.05 * f.normal), f.calc_center_median() + 10000*direc)[0] for direc in direcs])/len(direcs))
                     o['omin'][fi], o['omax'][fi], o['oave'][fi] = min([f[shadres] for f in cfaces]), max([f[shadres] for f in cfaces]), sum([f[shadres] for f in cfaces])/len(cfaces)
-                else:                                   
-                    
-                    shadres = bm.verts.layers.float['res{}'.format(fi)]    
+                else:                                                       
+                    shadres = bm.verts.layers.float['res{}'.format(frame)]    
                     cverts = [v for v in bm.verts if any([o.data.materials[f.material_index].mattype == '2' for f in v.link_faces])]
                     for v in cverts:
                         v[shadres] = 100 * (1 - sum([bpy.data.scenes[0].ray_cast(v.co + 0.01*v.normal, v.co + 10000*direc)[0] for direc in direcs])/len(direcs))
@@ -1140,6 +1145,6 @@ class NODE_OT_Shadow(bpy.types.Operator):
             bm.free()
 
         scene.frame_set(scene.fs)
-        scene['shadc'] = [o.name for o in ocalclist]
+
 #        simnode['minres'], simnode['maxres'], simnode['avres'] = {'{}'.format(frame) : 100} * fdiff, [100] * fdiff, [sum([scene.objects[on]['oave'][fi] for on in scene['shadc']])/len(scene['shadc']) for fi in range(fdiff)]
         return {'FINISHED'}

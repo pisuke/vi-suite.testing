@@ -76,12 +76,12 @@ def eupdate(self, context):
             bm.from_mesh(o.data)  
             bm.transform(o.matrix_world)
             if str(frame) in o['omax'].keys():
-                res = bm.faces.layers.float['res{}'.format(frame)] if o['cp'] == '0' else bm.verts.layers.float['res{}'.format(frame)]                
-                if o['cp'] == '0':
+                res = bm.faces.layers.float['res{}'.format(frame)] if context.scene['cp'] == '0' else bm.verts.layers.float['res{}'.format(frame)]                
+                if context.scene['cp'] == '0':
                     for f in [f for f in bm.faces if f.select]:
                         for v in f.verts:
                             o.data.shape_keys.key_blocks[str(frame)].data[v.index].co = o.data.shape_keys.key_blocks['Basis'].data[v.index].co + context.scene.vi_disp_3dlevel * (abs(inv - (f[res]-mino)/(maxo - mino)) * f.normal)
-                elif o['cp'] == '1':
+                elif context.scene['cp'] == '1':
                     for v in bm.verts:
                         o.data.shape_keys.key_blocks[str(frame)].data[v.index].co = o.data.shape_keys.key_blocks['Basis'].data[v.index].co + context.scene.vi_disp_3dlevel * (abs(inv - (v[res]-mino)/(maxo - mino)) * v.normal)
                 o.data.update()

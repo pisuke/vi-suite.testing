@@ -31,10 +31,10 @@ class Vi3DPanel(bpy.types.Panel):
             if scene.ss_disp_panel in (1,2) or scene.li_disp_panel in (1,2):
                 row = layout.row()
                 row.prop(scene, "vi_disp_3d")
-                if scene['LiViContext'] == 'LiVi Compliance':
+                if scene['visimcontext'] == 'LiVi Compliance':
                     newrow(layout, 'Sky view:', scene, 'vi_disp_sk')
                 row = layout.row()
-                row.operator("view3d.lidisplay", text="Shadow Display") if scene.resnode == 'VI Shadow Study' else row.operator("view3d.lidisplay", text="Radiance Display")
+                row.operator("view3d.lidisplay", text="Shadow Display") if scene['visimcontext'] == 'Shadow' else row.operator("view3d.lidisplay", text="Radiance Display")
 
                 if scene.ss_disp_panel == 2 or scene.li_disp_panel == 2:
                     row = layout.row()

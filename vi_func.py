@@ -241,14 +241,6 @@ def clearscene(scene, op):
                         livires = bm.faces.layers.float['res{}'.format(f)]
                         bm.faces.layers.float.remove(livires)
                         f += 1
-                    while bm.verts.layers.float.get('svres{}'.format(v)):
-                        livires = bm.verts.layers.float['svres{}'.format(v)]
-                        bm.verts.layers.float.remove(livires)
-                        svv += 1
-                    while bm.faces.layers.float.get('svres{}'.format(f)):
-                        livires = bm.faces.layers.float['svres{}'.format(f)]
-                        bm.faces.layers.float.remove(livires)
-                        svf += 1
                 bm.to_mesh(ob.data)
                 bm.free()
 #        selobj(scene, ob)
@@ -480,6 +472,7 @@ def vertarea(mesh, vert):
         eps = [(ev.verts[0].co +ev.verts[1].co)/2 for ev in vert.link_edges]
         eangle = (vert.link_edges[0].verts[0].co - vert.link_edges[0].verts[1].co).angle(vert.link_edges[1].verts[0].co - vert.link_edges[1].verts[1].co)
         area = mathutils.geometry.area_tri(vert.co, *eps) + mathutils.geometry.area_tri(faces[0].calc_center_median(), *eps) * 2*pi/eangle
+    print(area)
     return area       
 
 def facearea(obj, face):

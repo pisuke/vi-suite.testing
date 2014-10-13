@@ -20,13 +20,8 @@
 import bpy, glob, os, inspect, sys, datetime
 from subprocess import Popen
 from nodeitems_utils import NodeCategory, NodeItem
-from .vi_func import objvol, facearea, socklink, newrow, epwlatilongi, nodeid, nodeinputs, nodestate, remlink, rettimes, epentry, sockhide, nodecolour, epschedwrite
+from .vi_func import objvol, facearea, socklink, newrow, epwlatilongi, nodeid, nodeinputs, remlink, rettimes, epentry, sockhide, nodecolour, epschedwrite
 
-try:
-    import numpy
-    np =1
-except:
-    np = 0
 
 class ViNetwork(bpy.types.NodeTree):
     '''A node tree for VI-Suite analysis.'''
@@ -145,14 +140,14 @@ class ViGExLiNode(bpy.types.Node, ViNodes):
 #        simnodes =  [link.to_node for link in self.outputs['Geometry out'].links]
 #        self.inputs['Generative in'].hide = 'LiVi Basic' not in [clink[0].from_node.bl_label for clink in [simnode.inputs['Context in'].links for simnode in simnodes] if clink]  
                 
-    def export(self, context):
+    def export(self, scene):
         nodecolour(self, 0)
         self['exportstate'] = [str(x) for x in (self.animmenu, self.cpoint, self.offset)]
         self['frames'] = {'Material': 0, 'Geometry': 0, 'Lights':0}
         for mglfr in self['frames']:
-            self['frames'][mglfr] = context.scene.frame_end if self.animmenu == mglfr else 0
-            context.scene.gfe = max(self['frames'].values())
-        context.scene.vi_display_rp_off = self.offset
+            self['frames'][mglfr] = scene.frame_end if self.animmenu == mglfr else 0
+            scene.gfe = max(self['frames'].values())
+        scene['cp'], scene.vi_display_rp_off = self.cpoint, self.offset 
 #        self.exported = 1
 
 class ViLiNode(bpy.types.Node, ViNodes):
@@ -581,8 +576,9 @@ class ViSSNode(bpy.types.Node, ViNodes):
             name="", description="Specify the calculation point geometry", default="1", update = nodeupdate)
 
     def init(self, context):
-        self.inputs.new('ViLoc', 'Location in')
         self['nodeid'] = nodeid(self)
+        self.inputs.new('ViLoc', 'Location in')        
+        self['exportstate'] = ''
         nodecolour(self, 1)
         
     def draw_buttons(self, context, layout):
@@ -597,10 +593,11 @@ class ViSSNode(bpy.types.Node, ViNodes):
             row = layout.row()
             row.operator("node.shad", text = 'Calculate').nodeid = self['nodeid']
             
-    def export(self):
+    def export(self, scene):
         nodecolour(self, 0)
         self['exportstate'] = [str(x) for x in (self.animmenu, self.startmonth, self.endmonth, self.starthour, self.endhour, self.interval, self.cpoint)]
         self['minres'], self['maxres'], self['avres'] = {}, {}, {}
+        scene['cp'] = self.cpoint
 
 class ViWRNode(bpy.types.Node, ViNodes):
     '''Node describing a VI-Suite wind rose generator'''

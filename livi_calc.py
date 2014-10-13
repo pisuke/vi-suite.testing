@@ -124,7 +124,7 @@ def resapply(calc_op, res, svres, simnode, connode, geonode):
                 scene.objects.active = None
                 oareas = o['lisenseareas']
                 oarea = sum(oareas)
-                lenpoints = len(o['cfaces']) if geonode.cpoint == '0' else len(o['cverts'])
+                lenpoints = geonode['reslen']
 
                 if o.get('wattres'):
                     del o['wattres']
@@ -268,13 +268,13 @@ def resapply(calc_op, res, svres, simnode, connode, geonode):
                                 
                             if e[2] == 'PDF':
                                 edfpass[frame] = 1
-                                edfpassarea = sum([facearea(o, face) for fa, face in enumerate(ofaces) if res[frame][fa + pstart] > e[3]])      
+                                edfpassarea = sum([area for p, area in enumerate(oareas) if res[frame][p + pstart] > e[3]])      
                                 ecomps[frame].append((0, 1)[dfpassarea > e[1]*oarea/100])
                                 ecomps[frame].append(100*edfpassarea/oarea)
                                 edftotarea += oarea
 
                             elif e[2] == 'Skyview':
-                                passarea = sum([facearea(o, face) for fa, face in enumerate(ofaces) if svres[frame][fa] > 0])
+                                passarea = sum([area for p, area in enumerate(oareas) if svres[frame][p] > 0])
                                 ecomps[frame].append((0, 1)[passarea >= e[1] * oarea/100])
                                 ecomps[frame].append(100*passarea/oarea)
                                 passarea = 0
