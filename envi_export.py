@@ -574,7 +574,7 @@ class hcoiwrite(object):
                           '5': 'AirChanges/Hour', '6': 'Flow/Zone'}
         inflist = ['', '', '', '']
         infdict = {'1': '0', '2': '1', '3':'2', '4':'2', '5': '3', '6': '0'}
-        inflevel = self.obj.envi_inflevel if self.obj.envi_occtype != '1' else self.obj.envi_inflevel * 0.001 * self.obj.envi_occsmax
+        inflevel = self.obj.envi_inflevel if self.obj.envi_occtype != '1' or self.obj.envi_occinftype != '6' else self.obj.envi_inflevel * 0.001 * self.obj.envi_occsmax
         inflist[int(infdict[self.infiltype])] = inflevel
         params = ('Name', 'Zone or ZoneList Name', 'Schedule Name', 'Design Flow Rate Calculation Method', 'Design Flow Rate {m3/s}', 'Flow per Zone Floor Area {m3/s-m2}',
                'Flow per Exterior Surface Area {m3/s-m2}', 'Air Changes per Hour {1/hr}', 'Constant Term Coefficient', 'Temperature Term Coefficient',

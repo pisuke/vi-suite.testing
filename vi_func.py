@@ -404,17 +404,6 @@ def vsarea(obj, vs):
             i += 1
         return(area)
 
-def rettimes(ts, fs, us):
-    tot = range(min(len(ts), len(fs), len(us)))
-    fstrings, ustrings, tstrings = [[] for t in tot],  [[] for t in tot], ['Through: {}/{}'.format(dtdf(ts[t]).month, dtdf(ts[t]).day) for t in tot]
-    for t in tot:
-        fstrings[t]= ['For: '+''.join(f) for f in fs[t].split(' ') if f.strip(' ') != '']
-        for uf, ufor in enumerate(us[t].split(';')):
-            ustrings[t].append([])
-            for ut, utime in enumerate(ufor.split(',')):
-                ustrings[t][uf].append(['Until: '+','.join([u for u in utime.split(' ') if u.strip(' ')])])
-    return(tstrings, fstrings, ustrings)
-
 def windcompass():
     rad1 = 1.4
     dep = 2.8
@@ -744,7 +733,18 @@ def socklink(sock, ng):
                 bpy.data.node_groups[ng].links.remove(link)
     except:
         pass
-
+    
+def rettimes(ts, fs, us):
+    tot = range(min(len(ts), len(fs), len(us)))
+    fstrings, ustrings, tstrings = [[] for t in tot],  [[] for t in tot], ['Through: {}/{}'.format(dtdf(ts[t]).month, dtdf(ts[t]).day) for t in tot]
+    for t in tot:
+        fstrings[t]= ['For: '+''.join(f.strip()) for f in fs[t].split(' ') if f.strip(' ') != '']
+        for uf, ufor in enumerate(us[t].split(';')):
+            ustrings[t].append([])
+            for ut, utime in enumerate(ufor.split(',')):
+                ustrings[t][uf].append(['Until: '+','.join([u.strip() for u in utime.split(' ') if u.strip(' ')])])
+    return(tstrings, fstrings, ustrings)
+    
 def epschedwrite(name, stype, ts, fs, us):
     params = ['Name', 'Schedule Type Limits Name']
     paramvs = [name, stype]
