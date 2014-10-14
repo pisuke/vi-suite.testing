@@ -121,7 +121,7 @@ def chart_disp(plt, dnode, rnodes, Sdate, Edate):
     plt.ylabel(ylabel)
     plt.legend()
     plt.grid(True)
-    plt.show(block = str(sys.platform) != 'darwin')
+    plt.show(block = str(sys.platform) not in('win32', 'darwin'))
 
     def plot_graph(*args):
         args[0][0].plot()

@@ -218,7 +218,7 @@ def linumdisplay(disp_op, context, simnode, connode, geonode):
 
         if scene['cp'] == "0":
             livires = bm.faces.layers.float['res{}'.format(scene.frame_current)]
-            cindex = bm.verts.layers.int['cindex'] 
+#            cindex = bm.faces.layers.int['cindex'] 
 #            res = [f[livires] for f in bm.faces if f[cindex] > 0]
             if not scene.vi_disp_3d:
                 faces = [f for f in bm.faces if not f.hide and (f.calc_center_median() - view_location)*vw < 0]
@@ -237,7 +237,7 @@ def linumdisplay(disp_op, context, simnode, connode, geonode):
             draw_index(context, scene.vi_leg_display, mid_x, mid_y, width, height, fcs, res)
         else:
             livires = bm.verts.layers.float['res{}'.format(scene.frame_current)]  
-            cindex = bm.verts.layers.int['cindex'] 
+#            cindex = bm.verts.layers.int['cindex'] 
             
             if not scene.vi_disp_3d:
                 verts = [v for v in bm.verts if not v.hide and (v.co - view_location)*vw < 0]
