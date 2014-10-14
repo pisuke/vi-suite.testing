@@ -1,4 +1,4 @@
-import bpy, os, itertools, subprocess, datetime, sys, mathutils
+import bpy, os, itertools, subprocess, datetime, sys, mathutils, bmesh
 from .vi_func import epentry, objvol, ceilheight, selobj, facearea, boundpoly, rettimes, epschedwrite
 dtdf = datetime.date.fromordinal
 
@@ -10,8 +10,11 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
     en_idf = open(scene['viparams']['idf_file'], 'w')
     node.sdoy = datetime.datetime(datetime.datetime.now().year, node.startmonth, 1).timetuple().tm_yday
     node.edoy = (datetime.date(datetime.datetime.now().year, node.endmonth + (1, -11)[node.endmonth == 12], 1) - datetime.timedelta(days = 1)).timetuple().tm_yday
-    enng = [ng for ng in bpy.data.node_groups if 'EnVi Network' in ng.bl_label][0] if [ng for ng in bpy.data.node_groups if 'EnVi Network' in ng.bl_label] else 0
-
+    try:
+        enng = [ng for ng in bpy.data.node_groups if ng.bl_label == 'EnVi Network'][0]
+    except:
+        exp_op.write({'ERROR', 'No EnVi node tree found. Have you exported the EnVi Geometry?'})
+        return
     en_idf.write("!- Blender -> EnergyPlus\n!- Using the EnVi export scripts\n!- Author: Ryan Southall\n!- Date: {}\n\nVERSION,8.1.0;\n\n".format(datetime.datetime.now().strftime("%Y-%m-%d %H:%M")))
 
     params = ('Name', 'North Axis (deg)', 'Terrain', 'Loads Convergence Tolerance Value', 'Temperature Convergence Tolerance Value (deltaC)',
@@ -79,7 +82,7 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
                 elif presetmat in em.gas_dat:
                     em.amat_write(en_idf, matname[-1], [em.matdat[presetmat][2]])
                 elif mat.envi_con_type =='Window' and em.matdat[presetmat][0] == 'Glazing':
-                    em.tmat_write(en_idf, matname[-1], list(em.matdat[presetmat]), str(thicklist[pm]/1000))
+                    em.tmat_write(en_idf, matname[-1], list(em.matdat[presetmat]) + [0], str(thicklist[pm]/1000))
                 elif mat.envi_con_type =='Window' and em.matdat[presetmat][0] == 'Gas':
                     em.gmat_write(en_idf, matname[-1], list(em.matdat[presetmat]), str(thicklist[pm]/1000))
 
@@ -331,11 +334,14 @@ def pregeo(op):
     for materials in bpy.data.materials:
         if materials.users == 0:
             bpy.data.materials.remove(materials)
+            
+    if not len([ng for ng in bpy.data.node_groups if ng.bl_label == 'EnVi Network']):
+        enng = bpy.ops.node.new_node_tree(type='EnViN', name ="EnVi Network")
+    else:
+        enng = [ng for ng in bpy.data.node_groups if ng.bl_label == 'EnVi Network'][0]              
+    enng.use_fake_user = 1
 
     for obj in [obj for obj in scene.objects if obj.envi_type in ('1', '2') and obj.layers[0] == True and obj.hide == False]:
-        if obj.envi_type == '1':
-            enng = bpy.ops.node.new_node_tree(type='EnViN', name ="EnVi Network") if 'EnVi Network' not in bpy.data.node_groups.keys() else bpy.data.node_groups['EnVi Network']                
-            bpy.data.node_groups['EnVi Network'].use_fake_user = 1
         for mats in obj.data.materials:
             if 'en_'+mats.name not in [mat.name for mat in bpy.data.materials]:
                 mats.copy().name = 'en_'+mats.name
@@ -366,7 +372,12 @@ def pregeo(op):
         bpy.ops.mesh.remove_doubles()
         bpy.ops.object.mode_set(mode = 'OBJECT')
         en_obj.select = False
-        en_obj["volume"] = objvol(op, obj)
+        bm = bmesh.new()
+        bm.from_mesh(en_obj.data)
+        bm.transform(en_obj.matrix_world)
+        en_obj["volume"] = bm.calc_volume()
+        bm.free()
+#        en_obj["volume"] = objvol(op, obj)
 
         if any([mat.envi_afsurface for mat in en_obj.data.materials]):
             if en_obj.envi_type =='1' and en_obj.name not in [node.zone for node in enng.nodes if hasattr(node, 'zone')]:
@@ -380,7 +391,7 @@ def pregeo(op):
                 if hasattr(node, 'zone') and node.zone == en_obj.name:
                     enng.nodes.remove(node)
             
-        bpy.data.scenes[0].layers[0:2] = (True, False)
+#        bpy.data.scenes[0].layers[0:2] = (True, False)
         obj.select = True
         scene.objects.active = obj
 

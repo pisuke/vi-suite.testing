@@ -648,10 +648,10 @@ class ViGExEnNode(bpy.types.Node, ViNodes):
     epfiles = []
 
     def init(self, context):
+        self['nodeid'] = nodeid(self)
         self.outputs.new('ViEnG', 'Geometry out')
         self.outputs['Geometry out'].hide = True
-        self['nodeid'] = nodeid(self)
-        self['exportstate'] = [self.animmenu]
+        self['exportstate'] = ''
         nodecolour(self, 1)
 
     def draw_buttons(self, context, layout):
