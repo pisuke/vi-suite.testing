@@ -811,45 +811,42 @@ class NODE_OT_SunPath(bpy.types.Operator):
         bpy.ops.object.add(type = "MESH")
         spathob = context.active_object
         spathob.location, spathob.name,  spathob['VIType'], spathmesh = (0, 0, 0), "SPathMesh", "SPathMesh", spathob.data
-
+        bm = bmesh.new()
+        bm.from_mesh(spathmesh)
         for doy in range(0, 363):
             if (doy-4)%7 == 0:
                 for hour in range(1, 25):
                     ([solalt, solazi]) = solarPosition(doy, hour, scene['latitude'], scene['longitude'])[2:]
-                    spathmesh.vertices.add(1)
-                    spathmesh.vertices[-1].co = [-(sd-(sd-(sd*cos(solalt))))*sin(solazi), -(sd-(sd-(sd*cos(solalt))))*cos(solazi), sd*sin(solalt)]
-
-        for v in range(24, len(spathmesh.vertices)):
-            if spathmesh.vertices[v].co.z > 0 or spathmesh.vertices[v - 24].co.z > 0:
-                spathmesh.edges.add(1)
-                spathmesh.edges[-1].vertices[0:2] = (v, v - 24)
+                    bm.verts.new().co = [-(sd-(sd-(sd*cos(solalt))))*sin(solazi), -(sd-(sd-(sd*cos(solalt))))*cos(solazi), sd*sin(solalt)]
+        for v in range(24, len(bm.verts)):
+            if bm.verts[v].co.z > 0 or bm.verts[v - 24].co.z > 0:                
+                bm.edges.new((bm.verts[v], bm.verts[v - 24]))
             if v in range(1224, 1248):
-                if spathmesh.vertices[v].co.z > 0 or spathmesh.vertices[v - 1224].co.z > 0:
-                    spathmesh.edges.add(1)
-                    spathmesh.edges[-1].vertices[0:2] = (v, v - 1224)
-
+                if bm.verts[v].co.z > 0 or bm.verts[v - 1224].co.z > 0:
+                    bm.edges.new((bm.verts[v], bm.verts[v - 1224]))
+                    
         for doy in (79, 172, 355):
             for hour in range(1, 25):
-                ([solalt, solazi]) = solarPosition(doy, hour, scene['latitude'], scene['longitude'])[2:]
-                spathmesh.vertices.add(1)
-                spathmesh.vertices[-1].co = [-(sd-(sd-(sd*cos(solalt))))*sin(solazi), -(sd-(sd-(sd*cos(solalt))))*cos(solazi), sd*sin(solalt)]
-                if spathmesh.vertices[-1].co.z >= 0 and doy in (172, 355):
-                    numpos['{}-{}'.format(doy, hour)] = spathmesh.vertices[-1].co[:]
+                ([solalt, solazi]) = solarPosition(doy, hour, scene['latitude'], scene['longitude'])[2:]                
+                bm.verts.new().co = [-(sd-(sd-(sd*cos(solalt))))*sin(solazi), -(sd-(sd-(sd*cos(solalt))))*cos(solazi), sd*sin(solalt)]
+                if bm.verts[-1].co.z >= 0 and doy in (172, 355):
+                    numpos['{}-{}'.format(doy, hour)] = bm.verts[-1].co[:]
                 if hour != 1:
-                    if spathmesh.vertices[-2].co.z > 0 or spathmesh.vertices[-1].co.z > 0:
-                        spathmesh.edges.add(1)
+                    if bm.verts[-2].co.z > 0 or bm.verts[-1].co.z > 0:
+                        bm.edges.new((bm.verts[-2], bm.verts[-1]))
                         solringnum += 1
-                        spathmesh.edges[-1].vertices = (spathmesh.vertices[-2].index, spathmesh.vertices[-1].index)
                 if hour == 24:
-                    if spathmesh.vertices[-24].co.z > 0 or spathmesh.vertices[-1].co.z > 0:
-                        spathmesh.edges.add(1)
+                    if bm.verts[-24].co.z > 0 or bm.verts[-1].co.z > 0:
+                        bm.edges.new((bm.verts[-24], bm.verts[-1]))
                         solringnum += 1
-                        spathmesh.edges[-1].vertices = (spathmesh.vertices[-24].index, spathmesh.vertices[-1].index)
 
-        for edge in spathmesh.edges:
-            intersect = mathutils.geometry.intersect_line_plane(spathmesh.vertices[edge.vertices[0]].co, spathmesh.vertices[edge.vertices[1]].co, mathutils.Vector((0,0,0)), mathutils.Vector((0,0,1)))
-            for vert in [vert for vert in (spathmesh.vertices[edge.vertices[0]], spathmesh.vertices[edge.vertices[1]]) if vert.co.z < 0]:
+        for edge in bm.edges:
+            intersect = mathutils.geometry.intersect_line_plane(edge.verts[0].co, edge.verts[1].co, mathutils.Vector((0,0,0)), mathutils.Vector((0,0,1)))
+            for vert in [vert for vert in edge.verts if vert.co.z < 0]:
                 vert.co = intersect
+
+        bm.to_mesh(spathmesh)
+        bm.free()
 
         bpy.ops.object.convert(target='CURVE')
         spathob.data.bevel_depth, spathob.data.bevel_resolution = 0.08, 6
@@ -987,7 +984,7 @@ class NODE_OT_WindRose(bpy.types.Operator):
                 canvas.draw()
                 pixbuffer, pixels = canvas.buffer_rgba(), []
                 [w, h] = [int(d) for d in fig.bbox.bounds[2:]]
-                pixarray = numpy.frombuffer(pixbuffer, numpy.uint8)
+                pixarray = frombuffer(pixbuffer, uint8)
                 pixarray.shape = h, w, 4
                 pixels = pixarray[::-1].flatten()/255
 

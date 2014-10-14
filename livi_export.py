@@ -228,7 +228,7 @@ def radcexport(export_op, node, locnode, geonode):
                 sunexport(scene, node, locnode, frame - scene.fs)
                 if node['skynum'] < 2 and node.analysismenu != '2':
                     if frame == scene.frame_start:
-                        if 'SUN' in [ob.data.type for ob in scene.objects if ob.get('VIType')]:
+                        if 'SUN' in [ob.data.type for ob in scene.objects if ob.type == 'LAMP' and ob.get('VIType')]:
                             sun = [ob for ob in scene.objects if ob.get('VIType') == 'Sun'][0]
                         else:
                             bpy.ops.object.lamp_add(type='SUN')

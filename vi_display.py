@@ -145,12 +145,21 @@ def spnumdisplay(disp_op, context, simnode):
             blf.size(0, scene.vi_display_rp_fs, 72)
             mid_x, mid_y, width, height = viewdesc(context)
             view_mat = context.space_data.region_3d.perspective_matrix
-            view_pos = (view_mat.inverted()[0][3]/5, view_mat.inverted()[1][3]/5, view_mat.inverted()[2][3]/5)
+            view_pivot = bpy.context.active_object.location if bpy.context.active_object and context.user_preferences.view.use_rotate_around_active else context.region_data.view_location
+
+            if not context.space_data.region_3d.is_perspective:
+                vw =  mathutils.Vector((0.0, 0.0, 1.0))
+                vw.rotate(bpy.context.region_data.view_rotation)
+                view_pos = view_pivot + vw.normalized()*bpy.context.region_data.view_distance       
+            else:
+                vw = mathutils.Vector((view_mat.inverted()[0][3], view_mat.inverted()[1][3], view_mat.inverted()[2][3])).normalized()
+                view_pos = view_pivot + vw*bpy.context.region_data.view_distance
+
             ob_mat = ob.matrix_world
-            total_mat = view_mat*ob_mat
-            for np in ob['numpos']:
-                if (total_mat*mathutils.Vector(ob['numpos'][np]))[2] > 0 and not scene.ray_cast(0.95*ob_mat*mathutils.Vector(ob['numpos'][np]) ,view_pos)[0]:
-                    draw_index(context, leg, mid_x, mid_y, width, height, np.split('-')[1], total_mat*mathutils.Vector(ob['numpos'][np]).to_4d())
+            total_mat = view_mat * ob_mat
+            posis = [total_mat*mathutils.Vector(co).to_4d() for co in ob['numpos'].values() if (ob_mat*mathutils.Vector(co) - view_pos)*vw < 0 and not scene.ray_cast(0.95*ob_mat*mathutils.Vector(co), view_pos)[0]]
+            hs = [int(t.split('-')[1]) for t in ob['numpos'].keys() if total_mat*mathutils.Vector(ob['numpos'][t]).to_4d() in posis]
+            draw_index(context, leg, mid_x, mid_y, width, height, posis, hs)
             blf.disable(0, 4)
     else:
         return
@@ -209,6 +218,8 @@ def linumdisplay(disp_op, context, simnode, connode, geonode):
 
         if scene['cp'] == "0":
             livires = bm.faces.layers.float['res{}'.format(scene.frame_current)]
+            cindex = bm.verts.layers.int['cindex'] 
+#            res = [f[livires] for f in bm.faces if f[cindex] > 0]
             if not scene.vi_disp_3d:
                 faces = [f for f in bm.faces if not f.hide and (f.calc_center_median() - view_location)*vw < 0]
                 faces = [f for f in faces if not scene.ray_cast(f.calc_center_median() + scene.vi_display_rp_off * f.normal, view_location)[0]] if scene.vi_display_vis_only else faces
@@ -222,18 +233,23 @@ def linumdisplay(disp_op, context, simnode, connode, geonode):
                 faces = [f for fi, f in enumerate(faces) if not scene.ray_cast(fpos[fi] + scene.vi_display_rp_off * f.normal, view_location)[0]] if scene.vi_display_vis_only else faces
                 fpos = [skfpos(ob, scene.frame_current, [v.index for v in f.verts]) for f in faces]
                 fcs = [view_mat*fpos[fi].to_4d() for fi, f in enumerate(faces)]
-            draw_index(context, scene.vi_leg_display, mid_x, mid_y, width, height, faces, fcs, livires)
+            res = [f[livires] for f in faces]
+            draw_index(context, scene.vi_leg_display, mid_x, mid_y, width, height, fcs, res)
         else:
-            livires = bm.verts.layers.float['res{}'.format(scene.frame_current)]            
+            livires = bm.verts.layers.float['res{}'.format(scene.frame_current)]  
+            cindex = bm.verts.layers.int['cindex'] 
+            
             if not scene.vi_disp_3d:
                 verts = [v for v in bm.verts if not v.hide and (v.co - view_location)*vw < 0]
                 verts = [v for v in verts if not scene.ray_cast(v.co + scene.vi_display_rp_off * v.normal, view_location)[0]] if scene.vi_display_vis_only else verts
                 vcs = [view_mat*v.co.to_4d() for v in verts]
+                
             else:
                 verts = [v for v in bm.verts if not v.hide and (omw*(ob.data.shape_keys.key_blocks[str(scene.frame_current)].data[v.index].co) - view_location)*vw < 0]
                 verts = [v for v in verts if not scene.ray_cast(omw*(ob.data.shape_keys.key_blocks[str(scene.frame_current)].data[v.index].co) + scene.vi_display_rp_off * v.normal, view_location)[0]] if scene.vi_display_vis_only else verts
                 vcs = [total_mat*ob.data.shape_keys.key_blocks[str(scene.frame_current)].data[v.index].co.to_4d() for v in verts]
-            draw_index(context, scene.vi_leg_display, mid_x, mid_y, width, height, verts, vcs, livires)
+            res = [v[livires] for v in verts]
+            draw_index(context, scene.vi_leg_display, mid_x, mid_y, width, height, vcs, res)
 
         bm.free()
     blf.disable(0, 4)

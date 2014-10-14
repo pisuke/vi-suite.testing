@@ -1,3 +1,5 @@
+import sys
+
 def label(cat, stat, time, metric):
     catdict = {'Climate': 'Ambient', 'Zone': 'Zone', 'Linkage': 'Linkage'} 
     st = stat if time != '0' else ''
@@ -119,7 +121,7 @@ def chart_disp(plt, dnode, rnodes, Sdate, Edate):
     plt.ylabel(ylabel)
     plt.legend()
     plt.grid(True)
-    plt.show()
+    plt.show(block = str(sys.platform) != 'darwin')
 
     def plot_graph(*args):
         args[0][0].plot()
