@@ -28,7 +28,7 @@ else:
 import sys, os, platform, inspect, bpy, nodeitems_utils, bmesh
 
 epversion = "8-2-0"
-addonpath = os.path.dirname(inspect.getfile(inspect.currentframe()))
+addonpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 matpath, epwpath, envi_mats, envi_cons, conlayers  = addonpath+'/EPFiles/Materials/Materials.data', addonpath+'/EPFiles/Weather/', envi_materials(), envi_constructions(), 5
 
 if str(sys.platform) == 'darwin':
@@ -335,7 +335,8 @@ def register():
     Scene.li_assind = sprop("", "Name of the assessing individual", 1024, '')
     Scene.li_jobno = sprop("", "Project job number", 1024, '')
     Scene.resnode = sprop("", "", 0, "")
-    Scene.restree = sprop("", "", 0, "")   
+    Scene.restree = sprop("", "", 0, "") 
+    Scene.epversion = sprop("", "EnergyPlus version", 1024, epversion.replace('-', '.'))
 
     nodeitems_utils.register_node_categories("Vi Nodes", vinode_categories)
     nodeitems_utils.register_node_categories("EnVi Nodes", envinode_categories)

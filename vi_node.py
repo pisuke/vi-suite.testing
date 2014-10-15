@@ -67,7 +67,8 @@ class ViLoc(bpy.types.Node, ViNodes):
             self.outputs['Location out']['valid'] = ['Location'] 
         socklink(self.outputs['Location out'], self['nodeid'].split('@')[1])
 
-    epwpath = os.path.dirname(inspect.getfile(inspect.currentframe()))+'/EPFiles/Weather/'
+    epwpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))+'/EPFiles/Weather/'
+    print(epwpath)
     weatherlist = [((wfile, os.path.basename(wfile).strip('.epw').split(".")[0], 'Weather Location')) for wfile in glob.glob(epwpath+"/*.epw")]
     weather = bpy.props.EnumProperty(items = weatherlist, name="", description="Weather for this project", update = updatelatlong)
     loc = bpy.props.EnumProperty(items = [("0", "Manual", "Manual location"), ("1", "EPW ", "Get location from EPW file")], name = "", description = "Location", default = "0", update = updatelatlong)
@@ -778,7 +779,8 @@ class ViEnSimNode(bpy.types.Node, ViNodes):
             row.operator("node.ensim", text = 'Calculate').nodeid = self['nodeid']
     
     def update(self):
-        socklink(self.outputs['Results out'], self['nodeid'].split('@')[1])        
+        if self.outputs.get('Results out'):
+            socklink(self.outputs['Results out'], self['nodeid'].split('@')[1])        
     
     def sim(self):
         nodecolour(self, 0)
@@ -1374,9 +1376,9 @@ class ViCSVExport(bpy.types.Node, ViNodes):
     bl_icon = 'LAMP'
     
     def init(self, context):
+        self['nodeid'] = nodeid(self)
         self.inputs.new('ViEnR', 'Results in')
-        self['nodeid'] = nodeid(self, bpy.data.node_groups)
-    
+            
     def draw_buttons(self, context, layout):
         if self.inputs['Results in'].links:
             row = layout.row()

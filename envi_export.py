@@ -15,7 +15,7 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
     except:
         exp_op.write({'ERROR', 'No EnVi node tree found. Have you exported the EnVi Geometry?'})
         return
-    en_idf.write("!- Blender -> EnergyPlus\n!- Using the EnVi export scripts\n!- Author: Ryan Southall\n!- Date: {}\n\nVERSION,8.1.0;\n\n".format(datetime.datetime.now().strftime("%Y-%m-%d %H:%M")))
+    en_idf.write("!- Blender -> EnergyPlus\n!- Using the EnVi export scripts\n!- Author: Ryan Southall\n!- Date: {}\n\nVERSION,{};\n\n".format(datetime.datetime.now().strftime("%Y-%m-%d %H:%M"), scene.epversion))
 
     params = ('Name', 'North Axis (deg)', 'Terrain', 'Loads Convergence Tolerance Value', 'Temperature Convergence Tolerance Value (deltaC)',
               'Solar Distribution', 'Maximum Number of Warmup Days(from MLC TCM)')
@@ -317,10 +317,10 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
 
     if sys.platform == "win32":
         subprocess.call('{} "{}" {}'.format(scene['viparams']['cp'], locnode.weather, os.path.join(node.newdir, "in.epw")), shell = True)
-        subprocess.call('{} "{}" {}'.format(scene['viparams']['cp'], os.path.join(os.path.dirname(os.path.realpath( __file__ ) ), "EPFiles", "Energy+.idd"), scene['viparams']['newdir']+os.sep), shell = True)
+        subprocess.call('{} "{}" {}'.format(scene['viparams']['cp'], os.path.join(os.path.dirname(os.path.abspath(os.path.realpath( __file__ ))), "EPFiles", "Energy+.idd"), scene['viparams']['newdir']+os.sep), shell = True)
     else:
         subprocess.call('{} {} {}'.format(scene['viparams']['cp'], locnode.weather.replace(' ', '\ '), os.path.join(scene['viparams']['newdir'], "in.epw")), shell = True)
-        subprocess.call('{} {} {}'.format(scene['viparams']['cp'], os.path.join(scene.vipath.replace(' ', '\ '), "EPFiles", "Energy+.idd"), scene['viparams']['newdir']+os.sep), shell = True)
+        subprocess.call('{} {} {}'.format(scene['viparams']['cp'], os.path.join(scene.vipath.replace(' ', '\ '), "EPFiles", "Energy+.idd"), scene['viparams']['newdir']), shell = True)
 
 def pregeo(op):
     scene = bpy.context.scene
@@ -336,9 +336,8 @@ def pregeo(op):
             bpy.data.materials.remove(materials)
             
     if not len([ng for ng in bpy.data.node_groups if ng.bl_label == 'EnVi Network']):
-        enng = bpy.ops.node.new_node_tree(type='EnViN', name ="EnVi Network")
-    else:
-        enng = [ng for ng in bpy.data.node_groups if ng.bl_label == 'EnVi Network'][0]              
+        bpy.ops.node.new_node_tree(type='EnViN', name ="EnVi Network")
+    enng = [ng for ng in bpy.data.node_groups if ng.bl_label == 'EnVi Network'][0]              
     enng.use_fake_user = 1
 
     for obj in [obj for obj in scene.objects if obj.envi_type in ('1', '2') and obj.layers[0] == True and obj.hide == False]:
