@@ -41,7 +41,7 @@ class Vi3DPanel(bpy.types.Panel):
                     row.prop(view, "show_only_render")
                     newrow(layout, 'Legend', scene, "vi_leg_display")
 
-                    if scene.render.engine == 'BLENDER_RENDER' and context.active_object and context.active_object.type == 'MESH':
+                    if context.active_object and context.active_object.type == 'MESH':
                         newrow(layout, 'Draw wire:', scene, 'vi_disp_wire')
                     
                     if int(context.scene.vi_disp_3d) == 1:

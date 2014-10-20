@@ -59,15 +59,17 @@ def li_display(simnode, connode, geonode):
     scene.objects.active = None
     
     for i, o in enumerate([o for o in scene.objects if o.name in scene['{}c'.format(mtype)]]):
-        selobj(scene, o)
-        bpy.ops.object.duplicate(linked = False)
-        ores = bpy.context.active_object
-        ores.name = o.name+"res"
+        me = bpy.data.meshes.new(o.name+"res") 
+        ores = bpy.data.objects.new(o.name+"res", me)  
+#        selobj(scene, o)
+#        bpy.ops.object.duplicate(linked = False)
+#        ores = bpy.context.active_object
+#        ores.name = o.name+"res"
         cv = ores.cycles_visibility
         cv.diffuse, cv.glossy, cv.transmission, cv.scatter, cv.shadow = 0, 0, 0, 0, 0
         bm = bmesh.new()
         bm.from_mesh(o.data)
-#        bm.transform(o.matrix_world)
+        bm.transform(o.matrix_world)
         
         if scene['cp'] == '0':  
             cindex = bm.faces.layers.int['cindex']
@@ -79,14 +81,17 @@ def li_display(simnode, connode, geonode):
             cindex =  bm.verts.layers.int['cindex']
             for v in [v for v in bm.verts if v[cindex] < 1]:
                 bm.verts.remove(v)
+        while bm.verts.layers.shape:
+            bm.verts.layers.shape.remove(bm.verts.layers.shape[-1])
 
-        bm.to_mesh(ores.data)
+#        bm.to_mesh(ores.data)
+        bpy.context.scene.objects.link(ores)  
         obreslist.append(ores)
         ores['omax'], ores['omin'], ores['oave'], ores['lires'] = {}, {}, {}, 1
         selobj(scene, ores)
 
-        while ores.material_slots:
-            bpy.ops.object.material_slot_remove()
+#        while ores.material_slots:
+#            bpy.ops.object.material_slot_remove()
 
         for matname in ['{}#{}'.format(mtype, i) for i in range(20)]:
             if bpy.data.materials[matname] not in ores.data.materials[:]:

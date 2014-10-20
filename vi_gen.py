@@ -10,6 +10,7 @@ except:
 
 def vigen(calc_op, li_calc, resapply, geonode, connode, simnode, geogennode, tarnode):
     scene = bpy.context.scene 
+    livioc = scene['livic']
     simnode['Animation'] = 'Animated'
     if not scene['livim']:
         calc_op.report({'ERROR'}, "No object has been set-up for generative manipulation")
@@ -33,16 +34,16 @@ def vigen(calc_op, li_calc, resapply, geonode, connode, simnode, geogennode, tar
                     
     radgexport(calc_op, geonode, genframe = scene.frame_current)
     res = [li_calc(calc_op, simnode, connode, geonode, vi_func.livisimacc(simnode, connode), genframe = scene.frame_current)]
-    livicgeos = vi_func.retobjs('livic')
-    for o in [bpy.data.objects[on] for on in scene['livic']]:                 
-        
+#    livicgeos = vi_func.retobjs('livic')
+    for o in [bpy.data.objects[on] for on in scene['livic']]:                         
         if o.name in scene['livic']:
             vi_func.selobj(scene, o)
             o.keyframe_insert(data_path='["licalc"]')
             o.keyframe_insert(data_path='["licalc"]', frame = scene.frame_current + 1)
         else:
             scene['livim'].remove(o.name)
-        if not vi_func.gentarget(tarnode, o['oreslist']['{}'.format(scene.frame_current)]):
+        
+        if not vi_func.gentarget(tarnode, vi_func.bres(scene, o)):
             scene['livic'].remove(o.name)
     
     for o in [bpy.data.objects[on] for on in scene['livim']]:
@@ -93,7 +94,7 @@ def vigen(calc_op, li_calc, resapply, geonode, connode, simnode, geogennode, tar
             res.append(li_calc(calc_op, simnode, connode, geonode, vi_func.livisimacc(simnode, connode), genframe = scene.frame_current))
             
             for o in [bpy.data.objects[on] for on in scene['livic']]:
-                if not vi_func.gentarget(tarnode, o['oreslist']['{}'.format(scene.frame_current)]):
+                if not vi_func.gentarget(tarnode, vi_func.bres(scene, o)):
                     scene['livic'] = scene['livic'].remove(o.name) if scene['livic'].remove(o.name) else []
                     
                     if o.name in scene['livim']:
@@ -107,7 +108,7 @@ def vigen(calc_op, li_calc, resapply, geonode, connode, simnode, geogennode, tar
             
     scene.frame_end = scene.frame_end - 1  
     scene.fs = scene.frame_start    
-    resapply(calc_op, res, 0, simnode, connode, geonode)
+#    resapply(calc_op, res, 0, simnode, connode, geonode)
         
     for frame in vi_func.framerange(scene, 'Animation'):
         scene.frame_set(frame)
@@ -120,8 +121,9 @@ def vigen(calc_op, li_calc, resapply, geonode, connode, simnode, geogennode, tar
                             shape.value = 1
                         shape.keyframe_insert("value")
                     
-    vi_func.vcframe('', scene, livicgeos, simnode['Animation'])            
-    scene.frame_current = scene.frame_start       
+#    vi_func.vcframe('', scene, livicgeos, simnode['Animation'])            
+    scene.frame_current = scene.frame_start 
+    scene['livic'] = livioc      
         
 def modgeo(o, geogennode, scene, fc, fs):            
     if geogennode.geomenu == 'Object':

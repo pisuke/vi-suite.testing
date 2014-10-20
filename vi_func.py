@@ -43,7 +43,8 @@ def radpoints(o, faces, sks):
     for f, face in enumerate(faces):
         fentry = "# Polygon \n{} polygon poly_{}_{}\n0\n0\n{}\n".format(o.data.materials[face.material_index].name.replace(" ", "_"), o.name.replace(" ", "_"), face.index, 3*len(face.verts))
         if sks:
-            ventries = ''.join([" {} {} {}\n".format(v[skv0]+(v[skl0]-v[skl0])*skv1, v[skl0][1]+(v[skl1][1]-v[skl0][1])*skv1, v[skl0][2]+(v[skl1][2]-v[skl0][2])*skv1) for v in face.verts])
+#            print([(o.matrix_world*mathutils.Vector((v[skl0][0]+(v[skl0][0]-v[skl0][0])*skv1, v[skl0][1]+(v[skl1][1]-v[skl0][1])*skv1, v[skl0][2]+(v[skl1][2]-v[skl0][2])*skv1)))[:] for v in face.verts])
+            ventries = ''.join([" {0[0]} {0[1]} {0[2]}\n".format((o.matrix_world*mathutils.Vector((v[skl0][0]+(v[skl1][0]-v[skl0][0])*skv1, v[skl0][1]+(v[skl1][1]-v[skl0][1])*skv1, v[skl0][2]+(v[skl1][2]-v[skl0][2])*skv1)))) for v in face.verts])
         else:
             ventries = ''.join([" {0[0]:.3f} {0[1]:.3f} {0[2]:.3f}\n".format(v.co) for v in face.verts])
         fentries[f] = ''.join((fentry, ventries))        
@@ -512,6 +513,20 @@ def mtx2vals(mtxlines, fwd, node):
             hour += 1
     return(vecvals.tolist(), vals)
 
+def bres(scene, o):
+    bm = bmesh.new()
+    bm.from_mesh(o.data)
+    if scene['cp'] == '1':
+        rtlayer = bm.verts.layers.int['cindex']
+        reslayer = bm.verts.layers.float['res{}'.format(scene.frame_current)]
+        res = [v[reslayer] for v in bm.verts if v[rtlayer] > 0]
+    elif scene['cp'] == '0':
+        rtlayer = bm.faces.layers.int['cindex']
+        reslayer = bm.faces.layers.float['res{}'.format(scene.frame_current)]
+        res = [f[reslayer] for f in bm.faces if f[rtlayer] > 0]
+    bm.free()
+    return res
+    
 def framerange(scene, anim):
     if anim == 'Static':
         return(range(scene.frame_current, scene.frame_current +1))

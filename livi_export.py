@@ -22,12 +22,14 @@ from subprocess import PIPE, Popen, STDOUT
 from .vi_func import retsky, retobj, retmesh, clearscene, solarPosition, mtx2vals, retobjs, selobj, face_centre, selmesh, vertarea, facearea, li_calcob, radpoints
 
 def radgexport(export_op, node, **kwargs):
-    scene = bpy.context.scene
+    scene = bpy.context.scene   
+    if not bpy.context.active_object.layers[scene.active_layer]:
+        export_op.report({'INFO'}, "Active geometry is not on the active layer. You may need to lock layers.")
     scene['liparams'] = {'cp': node.cpoint}
     radfiles = []
     geogennode = node.inputs['Generative in'].links[0].from_node if node.inputs['Generative in'].links else 0
+    geooblist, caloblist, lightlist = retobjs('livig'), retobjs('livic'), retobjs('livil')    
     if not kwargs:
-        geooblist, caloblist, lightlist = retobjs('livig'), retobjs('livic'), retobjs('livil')
         mableobs = set(geooblist + caloblist)
         scene['livig'], scene['livic'], scene['livil'] = [o.name for o in geooblist], [o.name for o in caloblist], [o.name for o in lightlist]
         if geogennode:
@@ -38,7 +40,8 @@ def radgexport(export_op, node, **kwargs):
                     o.manip = 1 if o.select == True else 0
                 else:
                     o.manip = 1 if o.select == False else 0   
-    
+
+            for o in mableobs:
                 if geogennode.geomenu == 'Mesh':
                     selobj(scene, o)
                     bpy.ops.object.mode_set(mode = 'EDIT')
@@ -57,7 +60,7 @@ def radgexport(export_op, node, **kwargs):
                     bpy.ops.object.mode_set(mode = 'OBJECT')
                     o['vgi'] = o.vertex_groups['genfaces'].index
             scene['livim'] = [o.name for o in mableobs if o.manip]
-
+    
     if export_op.nodeid.split('@')[0] == 'LiVi Geometry':
         clearscene(scene, export_op)
         scene.fs = scene.frame_start if node.animmenu != 'Static' else 0
@@ -76,9 +79,7 @@ def radgexport(export_op, node, **kwargs):
                 mradfile +=  ''.join([m.radmat(scene) for m in o.data.materials if m.name not in matnames])
                 matnames = set([mat.name for mat in o.data.materials])
                 for mat in [m for m in o.data.materials if m.name not in matnames]:
-#                    mradfile += mat.radmat(scene)
                     matnames.append(mat.name)
-#                    mat.use_vertex_color_paint = 1 if mat.livi_sense else 0
                     if mat['radentry'].split(' ')[1] in ('light', 'mirror', 'antimatter'):
                         export_op.report({'INFO'}, o.name+" has an antimatter, emission or mirror material. Basic export routine used with no modifiers.")
                         o['merr'] = 1 
@@ -136,7 +137,7 @@ def radgexport(export_op, node, **kwargs):
                             export_op.report({'INFO'}, o.name+" has an antimatter material or could not be converted into a Radiance mesh and simpler export routine has been used. No un-applied object modifiers will be exported.")
                             genframe = gframe + 1 if not kwargs else kwargs['genframe']  
                             if o.data.shape_keys and o.data.shape_keys.key_blocks[0] and o.data.shape_keys.key_blocks[genframe]:
-                                skv0, skv1 = o.data.shape_keys.key_blocks[0].value and o.data.shape_keys.key_blocks[genframe].value
+                                skv0, skv1 = o.data.shape_keys.key_blocks[0].value, o.data.shape_keys.key_blocks[genframe].value
                                 sk0, sk1 = bm.verts.layers.shape.keys()[0], bm.verts.layers.shape.keys()[genframe]
                                 skl0, skl1 = bm.verts.layers.shape[sk0], bm.verts.layers.shape[sk1]
                                 gradfile += radpoints(o, [face for face in bm.faces if o.data.materials and face.material_index < len(o.data.materials) and o.data.materials[face.material_index]['radentry'].split(' ')[1] != 'antimatter'], (skv0, skv1, skl0, skl1))            
@@ -268,17 +269,18 @@ def radcexport(export_op, node, locnode, geonode):
                     with open(locnode.weather, "r") as epwfile:
                         epwlines = epwfile.readlines()
                         epwyear = epwlines[8].split(",")[0]
-                        with open(os.path.join(scene['viparams']['newdir'], "{}.wea".format(epwbase[0])), "w") as wea:
-                            wea.write("place {0[1]}\nlatitude {0[6]}\nlongitude {0[7]}\ntime_zone {0[8]}\nsite_elevation {0[9]}weather_data_file_units 1\n".format(epwlines[0].split(",")))
-                            for epwline in epwlines[8:]:
-                                if int(epwline.split(",")[1]) in range(node.startmonth, node.endmonth + 1):
-                                    wea.write("{0[1]} {0[2]} {0[3]} {0[14]} {0[15]} \n".format(epwline.split(",")))
+                        subprocess.call("epw2wea {} {}".format(locnode.weather, os.path.join(scene['viparams']['newdir'], "{}.wea".format(epwbase[0]))), shell=True)
+#                        with open(os.path.join(scene['viparams']['newdir'], "{}.wea".format(epwbase[0])), "w") as wea:
+#                            wea.write("place {0[1]}\nlatitude {0[6]}\nlongitude {0[7]}\ntime_zone {0[8]}\nsite_elevation {0[9]}weather_data_file_units 1\n".format(epwlines[0].split(",")))
+#                            for epwline in epwlines[8:]:
+#                                if int(epwline.split(",")[1]) in range(node.startmonth, node.endmonth + 1):
+#                                    wea.write("{0[1]} {0[2]} {0[3]} {0[14]} {0[15]} \n".format(epwline.split(",")))
                         subprocess.call("gendaymtx -m 1 {0} {1}.wea > {1}.mtx".format(('', '-O1')[node.analysismenu in ('1', '3')], os.path.join(scene['viparams']['newdir'], epwbase[0])), shell=True)                       
                 else:
                     export_op.report({'ERROR'}, "Not a valid EPW file")
                     return
     
-                mtxfile = open(scene['viparams']['newdir']+os.path.sep+epwbase[0]+".mtx", "r")
+                mtxfile = open(os.path.join(scene['viparams']['newdir'], epwbase[0]+".mtx"), "r")
             
             elif node['source'] == '1' and int(node.analysismenu) > 1:
                 mtxfile = open(node.mtxname, "r")

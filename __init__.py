@@ -25,7 +25,7 @@ else:
     from .vi_operators import *
     from .vi_ui import *
 
-import sys, os, platform, inspect, bpy, nodeitems_utils, bmesh
+import sys, os, platform, inspect, bpy, nodeitems_utils, bmesh, shutil
 
 epversion = "8-2-0"
 addonpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -38,10 +38,17 @@ if str(sys.platform) == 'darwin':
 
 if str(sys.platform) == 'linux':
     if not hasattr(os.environ, 'RAYPATH'):
-        raddir =  '/usr/share/radiance' if os.path.isdir('/usr/share/radiance') else '/usr/local/radiance'
-        os.environ["PATH"] = os.environ["PATH"] + ":{}/bin:{}/linux:/usr/local/EnergyPlus-{}".format(raddir, addonpath, epversion)
-        os.environ["RAYPATH"] = "{}/lib:{}/lib".format(raddir, addonpath)
-
+        radldir = [d for d in ('/usr/share/radiance/lib', '/usr/local/radiance/lib') if os.path.isdir(d)]
+        radbdir = [d for d in ('/usr/share/radiance/bin', '/usr/local/radiance/bin') if os.path.isdir(d)]
+        epdir = '/usr/local/EnergyPlus-{}'.format(epversion) if os.path.isdir('/usr/local/EnergyPlus-{}'.format(epversion)) else '{}/EPFiles/bin/linux'.format(addonpath)
+        if epdir == '/usr/local/EnergyPlus-{}'.format(epversion):
+            shutil.copyfile('/usr/local/EnergyPlus-{}/Energy+.idd'.format(epversion), '{}/EPFiles/Energy+.idd'.format(addonpath))            
+        if not radldir:
+            radbdir, radldir = ['{}/Radfiles/bin/linux'.format(addonpath)], ['{}/Radfiles/lib'.format(addonpath)]
+            print("Cannot find a valid system Radiance directory. Using included Radiance binaries")
+        os.environ["PATH"] = os.environ["PATH"] + ":{}:{}/linux:{}".format(radbdir[0], addonpath, epdir)
+        os.environ["RAYPATH"] = "{}:{}/Radfiles/lib".format(radldir[0], addonpath)
+        print(os.environ["PATH"])
 elif str(sys.platform) == 'win32':
     if not hasattr(os.environ, 'RAYPATH'):
         if os.path.isdir(r"C:\Program Files (x86)\Radiance"):
@@ -97,7 +104,7 @@ def tupdate(self, context):
         
 def wupdate(self, context):
     o = context.active_object
-    (o.show_wire, o.show_all_edges) = (1, 1) if context.scene.vi_disp_wire else (0, 0)
+    (o.show_wire, o.show_all_edges) = (1, 1) if o and o.type == 'MESH' and context.scene.vi_disp_wire else (0, 0)
         
 def register():
     bpy.utils.register_module(__name__)

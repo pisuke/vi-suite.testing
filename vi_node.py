@@ -120,10 +120,10 @@ class ViGExLiNode(bpy.types.Node, ViNodes):
     offset = bpy.props.FloatProperty(name="", description="Calc point offset", min=0.001, max=1, default=0.01, update = nodeupdate)
     
     def init(self, context):
-        self['exportstate'] = [str(x) for x in (self.animmenu, self.cpoint)]
-        self.inputs.new('ViGen', 'Generative in')
-        self.outputs.new('ViLiG', 'Geometry out')
+        self['exportstate'] = ''
         self['nodeid'] = nodeid(self)
+        self.outputs.new('ViLiG', 'Geometry out')
+        self.inputs.new('ViGen', 'Generative in')        
         bpy.context.scene.gfe = 0
         nodecolour(self, 1)
 
@@ -484,7 +484,7 @@ class ViLiSNode(bpy.types.Node, ViNodes):
         self.outputs.new('LiViWOut', 'Data out')
         self.outputs['Data out'].hide = True        
         nodecolour(self, 1)
-        self['exportstate'] = ''
+        self['maxres'], self['minres'], self['avres'], self['exportstate'] = {}, {}, {}, ''
         
     def draw_buttons(self, context, layout):
         geonode = self.geonodes()
@@ -509,7 +509,8 @@ class ViLiSNode(bpy.types.Node, ViNodes):
                     row.operator("node.livicalc", text = 'Calculate').nodeid = self['nodeid']
                     
     def update(self):
-        socklink(self.outputs['Data out'], self['nodeid'].split('@')[1])
+        if self.outputs.get('Data out'):
+            socklink(self.outputs['Data out'], self['nodeid'].split('@')[1])
         self.run = 0
     
     def geonodes(self):

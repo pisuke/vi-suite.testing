@@ -1,4 +1,4 @@
-import bpy, bpy_extras, sys, datetime, mathutils, os, time, bmesh
+import bpy, bpy_extras, sys, datetime, mathutils, os, time, bmesh, shutil
 from os import rename
 from numpy import arange, array, digitize, frombuffer, uint8
 import bpy_extras.io_utils as io_utils
@@ -246,7 +246,6 @@ class NODE_OT_RadPreview(bpy.types.Operator, io_utils.ExportHelper):
                 time.sleep(0.1)
                 if rvurun.poll() is not None:                    
                     for line in rvurun.stderr:
-                        print(line)
                         if 'view up parallel to view direction' in line.decode():
                             self.report({'ERROR'}, "Camera connot point directly upwards")
                             return {'CANCELLED'}
@@ -323,7 +322,7 @@ class NODE_OT_LiVIGlare(bpy.types.Operator):
             self.frame = self.scene.fs
             for frame in range(self.scene.fs, self.scene.fe + 1):
                 if not self.simnode.edit_file:
-                    createradfile(self.scene, frame, self.connode, self.geonode)
+                    createradfile(self.scene, frame, self, self.connode, self.geonode)
                 elif not os.path.isfile(os.path.join(self.scene['viparams']['newdir'], self.scene['viparams']['filename']+'-{}.rad'.format(frame))):
                     self.report({'ERROR'}, "There is no saved radiance input file. Turn off the edit file option")
                     return {'CANCELLED'}
@@ -410,7 +409,9 @@ class VIEW3D_OT_LiDisplay(bpy.types.Operator):
 #        bpy.types.Scene.vi_disp_3dlevel = 
         scene = context.scene 
         clearscene(scene, self)
-        scene.li_disp_count += 1
+        
+        scene.li_disp_count = scene.li_disp_count + 1 if scene.li_disp_count < 10 else 0
+        scene.vi_disp_wire = 0
         self.disp = scene.li_disp_count
         simnode = bpy.data.node_groups[scene.restree].nodes[scene.resnode]
         (connode, geonode) = (0, 0) if simnode.bl_label == 'VI Shadow Study' else (simnode.export(self.bl_label))
@@ -624,6 +625,9 @@ class NODE_OT_EnExport(bpy.types.Operator, io_utils.ExportHelper):
         scene.vi_display, scene.sp_disp_panel, scene.li_disp_panel, scene.lic_disp_panel, scene.en_disp_panel, scene.ss_disp_panel, scene.wr_disp_panel = 0, 0, 0, 0, 0, 0, 0
         node = bpy.data.node_groups[self.nodeid.split('@')[1]].nodes[self.nodeid.split('@')[0]]
         locnode = node.inputs['Location in'].links[0].from_node
+        shutil.copyfile(locnode.weather, os.path.join(scene['viparams']['newdir'], "in.epw"))
+        shutil.copyfile(os.path.join(os.path.dirname(os.path.abspath(os.path.realpath( __file__ ))), "EPFiles", "Energy+.idd"), os.path.join(scene['viparams']['newdir'], "Energy+.idd"))
+
         if bpy.data.filepath:
             if bpy.context.active_object and not bpy.context.active_object.hide:
                 if bpy.context.active_object.type == 'MESH':
@@ -694,7 +698,7 @@ class NODE_OT_EnSim(bpy.types.Operator, io_utils.ExportHelper):
                         bpy.data.node_groups[self.nodeid.split('@')[1]].links.remove(self.simnode.outputs[0].links[0])
                         bpy.data.node_groups[self.nodeid.split('@')[1]].links.new(socket1, socket2)
                     viparams(scene)
-                    scene.vi_display, scene.sp_disp_panel, scene.li_disp_panel, scene.lic_disp_panel, scene.en_disp_panel, scene.ss_disp_panel, scene.wr_disp_panel = 1, 0, 2, 0, 0, 0, 0                    
+                    scene.vi_display, scene.sp_disp_panel, scene.li_disp_panel, scene.lic_disp_panel, scene.en_disp_panel, scene.ss_disp_panel, scene.wr_disp_panel = 0, 0, 0, 0, 0, 0, 0                    
                     return {'FINISHED'}
         else:
             return {'PASS_THROUGH'}

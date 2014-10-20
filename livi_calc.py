@@ -95,24 +95,25 @@ def li_calc(calc_op, simnode, connode, geonode, simacc, **kwargs):
 #                if connode.analysismenu == '3':
 #                    res = reswatt
                                   
-        if not kwargs:           
-            resapply(calc_op, res, svres, simnode, connode, geonode)
-        else:
-            return(res[0])
+#        if not kwargs:           
+        resapply(calc_op, res, svres, simnode, connode, geonode, frames)
+#        else:
+#            resapply(calc_op, res, svres, simnode, connode, geonode, [genframe])
+        return(res[0])
    
-def resapply(calc_op, res, svres, simnode, connode, geonode):
+def resapply(calc_op, res, svres, simnode, connode, geonode, frames):
     scene = bpy.context.scene  
-    simnode['maxres'], simnode['minres'], simnode['avres'] = {}, {}, {}
     if connode.analysismenu != '3' or connode.bl_label != 'LiVi CBDM':
-        for i in range(scene.fs, scene.fe + 1):
-            simnode['maxres'][str(i)] = numpy.amax(res[i])
-            simnode['minres'][str(i)] = numpy.amin(res[i])
-            simnode['avres'][str(i)] = numpy.average(res[i])
+        print(frames)
+        for i, f in enumerate(frames):
+            simnode['maxres'][str(f)] = numpy.amax(res[i])
+            simnode['minres'][str(f)] = numpy.amin(res[i])
+            simnode['avres'][str(f)] = numpy.average(res[i])
         crits = []
-        dfpass = [0 for f in range(scene.fs, scene.fe + 1)]
-        edfpass = [0 for f in range(scene.fs, scene.fe + 1)]
+        dfpass = [0 for f in frames]
+        edfpass = [0 for f in frames]
         
-        for fr, frame in enumerate(range(scene.fs, scene.fe + 1)):
+        for fr, frame in enumerate(frames):
             scene.frame_set(frame)
             dftotarea, dfpassarea, edfpassarea, edftotarea, pstart, sof, eof = 0, 0, 0, 0, 0, 0, 0
         
