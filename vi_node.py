@@ -267,8 +267,9 @@ class ViLiNode(bpy.types.Node, ViNodes):
         self['frames']['Time'] = context.scene.cfe = context.scene.fs + int(self['hours']/self.interval)
         self['resname'] = ("illumout", "irradout", "dfout", '')[int(self.analysismenu)]
         self['unit'] = ("Lux", "W/m"+ u'\u00b2', "DF %", '')[int(self.analysismenu)]
-        self['simalg'] = (" |  rcalc  -e '$1=47.4*$1+120*$2+11.6*$3' ", " |  rcalc  -e '$1=$1' ", " |  rcalc  -e '$1=(47.4*$1+120*$2+11.6*$3)/100' ", '')[int(self.analysismenu)] \
-            if str(sys.platform) != 'win32' else (' |  rcalc  -e "$1=47.4*$1+120*$2+11.6*$3" ', ' |  rcalc  -e "$1=$1" ', ' |  rcalc  -e "$1=(47.4*$1+120*$2+11.6*$3)/100" ', '')[int(self.analysismenu)]
+        quotes = ('"') if sys.platform == 'win32' else ("'")
+        self['simalg'] = (" |  rcalc  -e {0}$1=47.4*$1+120*$2+11.6*$3{0} ".format(quotes), " |  rcalc  -e {0}$1=$1{0} ".format(quotes), " |  rcalc  -e {0}$1=(47.4*$1+120*$2+11.6*$3)/100{0} ".format(quotes), '')[int(self.analysismenu)] #\
+            #if str(sys.platform) != 'win32' else (' |  rcalc  -e "$1=47.4*$1+120*$2+11.6*$3" ', ' |  rcalc  -e "$1=$1" ', ' |  rcalc  -e "$1=(47.4*$1+120*$2+11.6*$3)/100" ', '')[int(self.analysismenu)]
 
         if int(self.skymenu) < 4:
             self['skytypeparams'] = ("+s", "+i", "-c", "-b 22.86 -c")[int(self['skynum'])]
@@ -390,7 +391,8 @@ class ViLiCBNode(bpy.types.Node, ViNodes):
     def export(self, context):
         self['skynum'] = 4
         quotes = ('"') if sys.platform == 'win32' else ("'")
-        self['simalg'] = (" |  rcalc  -e {0}$1=(47.4*$1+120*$2+11.6*$3)/1000{0} ".format(quotes), " |  rcalc  -e '$1=($1+$2+$3)/3000' ", " |  rcalc  -e '$1=(47.4*$1+120*$2+11.6*$3)' ", " |  rcalc  -e '$1=($1+$2+$3)/3' ", " |  rcalc  -e '$1=(47.4*$1+120*$2+11.6*$3)' ")[int(self.analysismenu)]
+        self['simalg'] = (" |  rcalc  -e {0}$1=(47.4*$1+120*$2+11.6*$3)/1000{0} ".format(quotes), " |  rcalc  -e {0}$1=($1+$2+$3)/3000{0} ".format(quotes), 
+        " |  rcalc  -e {0}$1=(47.4*$1+120*$2+11.6*$3){0} ".format(quotes), " |  rcalc  -e {0}$1=($1+$2+$3)/3{0} ".format(quotes), " |  rcalc  -e {0}$1=(47.4*$1+120*$2+11.6*$3){0} ".format(quotes))[int(self.analysismenu)]
         self['wd'] = (7, 5)[self.weekdays]
         self['resname'] = ('kluxhours', 'cumwatth', 'dayauto', 'hourrad', 'udi')[int(self.analysismenu)]
         self['unit'] = ('kLuxHours', 'kWh', 'DA (%)', '', 'UDI-a (%)')[int(self.analysismenu)]
@@ -445,8 +447,9 @@ class ViLiCNode(bpy.types.Node, ViNodes):
         socklink(self.outputs['Context out'], self['nodeid'].split('@')[1])
 
     def export(self, context):
+        quotes = ('"') if sys.platform == 'win32' else ("'")
         if self.analysismenu in ('0', '1'):
-            self['simalg'] = " |  rcalc  -e '$1=(47.4*$1+120*$2+11.6*$3)/100' " if str(sys.platform) != 'win32' else ' |  rcalc  -e "$1=(47.4*$1+120*$2+11.6*$3)/100" '
+            self['simalg'] = " |  rcalc  -e {0}$1=(47.4*$1+120*$2+11.6*$3)/100{0} ".format(quotes)# if str(sys.platform) != 'win32' else ' |  rcalc  -e "$1=(47.4*$1+120*$2+11.6*$3)/100" '
         self['resname'] = 'breaamout' if self.analysismenu == '0' else 'cfsh'
         self['skytypeparams'] = "-b 22.86 -c"
         self['exportstate'] = [str(x) for x in (self.analysismenu, self.bambuildmenu, self.buildstorey, self.animmenu)]
