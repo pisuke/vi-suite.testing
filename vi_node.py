@@ -848,7 +848,7 @@ class ViEnInNode(bpy.types.Node, ViNodes):
     def init(self, context):
         self.outputs.new('ViEnC', 'Context out')
         self.outputs['Context out'].hide = True
-        self['nodeid'] = nodeid(self, bpy.data.node_groups)
+        self['nodeid'] = nodeid(self)
 
     def draw_buttons(self, context, layout):
         row = layout.row()
@@ -1568,7 +1568,7 @@ class AFNCon(bpy.types.Node, EnViNodes):
     rsala = bpy.props.FloatProperty(default = 1, max = 1, min = 0, description = 'Ratio of Building Width Along Short Axis to Width Along Long Axis', name = "")
 
     def init(self, context):
-        self['nodeid'] = nodeid(self, bpy.data.node_groups)
+        self['nodeid'] = nodeid(self)
         self.inputs.new('EnViWPCSocket', 'WPC Array')
 
     def draw_buttons(self, context, layout):
@@ -1690,7 +1690,7 @@ class EnViZone(bpy.types.Node, EnViNodes):
     upperlim = bpy.props.FloatProperty(default = 50, name = "", min = 0, max = 100)
 
     def init(self, context):
-        self['nodeid'] = nodeid(self, bpy.data.node_groups)
+        self['nodeid'] = nodeid(self)
         self.inputs.new('EnViSchedSocket', 'TSPSchedule')
         self.inputs['TSPSchedule'].hide = True
         self.inputs.new('EnViSchedSocket', 'VASchedule')
@@ -1787,7 +1787,7 @@ class EnViSSFlowNode(bpy.types.Node, EnViNodes):
     extnode =  bpy.props.BoolProperty(default = 0)
 
     def init(self, context):
-        self['nodeid'] = nodeid(self, bpy.data.node_groups)
+        self['nodeid'] = nodeid(self)
         self.inputs.new('EnViSchedSocket', 'VASchedule')
         self.inputs.new('EnViSchedSocket', 'TSPSchedule')
         self.inputs['TSPSchedule'].hide = True
@@ -1949,7 +1949,7 @@ class EnViSFlowNode(bpy.types.Node, EnViNodes):
         self.inputs.new('EnViSFlowSocket', 'Node 2')
         self.outputs.new('EnViSFlowSocket', 'Node 1')
         self.outputs.new('EnViSFlowSocket', 'Node 2')
-        self['nodeid'] = nodeid(self, bpy.data.node_groups)
+        self['nodeid'] = nodeid(self)
 
     def update(self):
         for sock in (self.inputs[:] + self.outputs[:]):
@@ -2034,7 +2034,7 @@ class EnViExtNode(bpy.types.Node, EnViNodes):
     enname = bpy.props.StringProperty()
 
     def init(self, context):
-        self['nodeid'] = nodeid(self, bpy.data.node_groups)
+        self['nodeid'] = nodeid(self)
         self.inputs.new('EnViSSFlowSocket', 'Sub surface')
         self.inputs.new('EnViSFlowSocket', 'Surface')
         self.outputs.new('EnViSSFlowSocket', 'Sub surface')
@@ -2103,35 +2103,45 @@ class EnViSched(bpy.types.Node, EnViNodes):
     bl_icon = 'SOUND'
 
     def tupdate(self, context):
-        err = 0
-        if self.t2 <= self.t1:
-            self.t2 = self.t1 + 1
-        if self.t3 <= self.t2:
-            self.t3 = self.t2 + 1
-        if self.t4 != 365:
-            self.t4 = 365
+        try:
+            err = 0
+            if self.t2 <= self.t1 and self.t1 < 365:
+                print(self.t1)
+                self.t2 = self.t1 + 1
+                if self.t3 <= self.t2 and self.t2 < 365:
+                    self.t3 = self.t2 + 1
+                    if self.t4 != 365:
+                        self.t4 = 365
             
-        if max((self.t1, self.t2, self.t3, self.t4)) != 365:
-            err = 1
-        tn = (self.t1, self.t2, self.t3, self.t4).index(365) + 1
-        if any([not f for f in (self.f1, self.f2, self.f3, self.f4)[:tn]]):
-            err = 1
-        if any([not u or len(u.split(';')) != len((self.f1, self.f2, self.f3, self.f4)[i].split(' ')) for i, u in enumerate((self.u1, self.u2, self.u3, self.u4)[:tn])]):
-            err = 1
-        
-        for f in (self.f1, self.f2, self.f3, self.f4)[:tn]:
-            for fd in f.split(' '):
-                if fd and fd.upper() not in ("ALLDAYS", "WEEKDAYS", "WEEKEND", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY", "ALLOTHERDAYS"):
-                    err = 1
-        for u in (self.u1, self.u2, self.u3, self.u4)[:tn]:
-            for uf in u.split(';'):
-                for ud in uf.split(','):
-                    if len(ud.split()[0].split(':')) != 2 or int(ud.split()[0].split(':')[0]) not in range(1, 25) or len(ud.split()[0].split(':')) != 2 or not ud.split()[0].split(':')[1].isdigit() or int(ud.split()[0].split(':')[1]) not in range(0, 60):
+            tn = (self.t1, self.t2, self.t3, self.t4).index(365) + 1    
+            if max((self.t1, self.t2, self.t3, self.t4)[:tn]) != 365:
+                print(max((self.t1, self.t2, self.t3, self.t4)))
+                err = 1
+            
+            if any([not f for f in (self.f1, self.f2, self.f3, self.f4)[:tn]]):
+                print('err2')
+                err = 1
+            if any([not u or len(u.split(';')) != len((self.f1, self.f2, self.f3, self.f4)[i].split(' ')) for i, u in enumerate((self.u1, self.u2, self.u3, self.u4)[:tn])]):
+                err = 1
+                print('err3')
+            
+            for f in (self.f1, self.f2, self.f3, self.f4)[:tn]:
+                for fd in f.split(' '):
+                    if fd and fd.upper() not in ("ALLDAYS", "WEEKDAYS", "WEEKEND", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY", "ALLOTHERDAYS"):
                         err = 1
-        if err:
-            nodecolour(self, 1)
-        else:
-            nodecolour(self, 0)
+                        print('err4')
+            for u in (self.u1, self.u2, self.u3, self.u4)[:tn]:
+                for uf in u.split(';'):
+                    for ud in uf.split(','):
+                        if len(ud.split()[0].split(':')) != 2 or int(ud.split()[0].split(':')[0]) not in range(1, 25) or len(ud.split()[0].split(':')) != 2 or not ud.split()[0].split(':')[1].isdigit() or int(ud.split()[0].split(':')[1]) not in range(0, 60):
+                            err = 1
+                            print('err5')
+            if err:
+                nodecolour(self, 1)
+            else:
+                nodecolour(self, 0)
+        except:
+           nodecolour(self, 1) 
         
     (u1, u2, u3, u4) =  [bpy.props.StringProperty(name = "", description = "Valid entries (; separated for each 'For', comma separated for each day, space separated for each time value pair)", update = tupdate)] * 4
     (f1, f2, f3, f4) =  [bpy.props.StringProperty(name = "", description = "Valid entries (space separated): AllDays, Weekdays, Weekends, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday, AllOtherDays", update = tupdate)] * 4
@@ -2263,7 +2273,7 @@ class ViASCImport(bpy.types.Node, ViNodes):
     ascfile = bpy.props.StringProperty()
     
     def init(self, context):
-        self['nodeid'] = nodeid(self, bpy.data.node_groups)
+        self['nodeid'] = nodeid(self)
     
     def draw_buttons(self, context, layout):
         row = layout.row()

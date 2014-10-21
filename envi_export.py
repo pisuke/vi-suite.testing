@@ -112,7 +112,7 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
                 elif layer == "1" and mat.envi_con_type == "Window":
                     mats = ((mat.envi_export_glasslist_lo, mat.envi_export_wgaslist_l1, mat.envi_export_glasslist_l2, mat.envi_export_wgaslist_l3, mat.envi_export_glasslist_l4)[l])
                     if l in (0, 2, 4):
-                        em.tmat_write(en_idf, '{}-{}'.format(mats, matcount.count(mats.upper())), list(em.matdat[mats]) + [((0, mat.envi_export_lo_sdiff)[len(layers) == l + 1], '', (0, mat.envi_export_lo_sdiff)[len(layers) == l + 1], '', (0, mat.envi_export_lo_sdiff)[len(layers) == l + 1])[l]], str(thicklist[l]/1000))
+                        em.tmat_write(en_idf, '{}-{}'.format(mats, matcount.count(mats.upper())), list(em.matdat[mats]) + [(0, mat.envi_export_lo_sdiff)[len(layers) == l + 1]], list(em.matdat[mats])[3])
                     else:
                         em.gmat_write(en_idf, '{}-{}'.format(mats, matcount.count(mats.upper())), list(em.matdat[mats]), str(thicklist[l]/1000))
 

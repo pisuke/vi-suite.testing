@@ -148,6 +148,8 @@ class VIMatPanel(bpy.types.Panel):
                             row = layout.row()
 
                 if cm.envi_layero != '0':
+                    row = layout.row()
+                    row.label("----------------")
                     newrow(layout, "2nd layer:", cm, "envi_layer1")
                     row = layout.row()
                     if cm.envi_layer1 == '1':
@@ -169,11 +171,14 @@ class VIMatPanel(bpy.types.Panel):
                                 row = layout.row()
 
                     elif cm.envi_layer1 == '2' and cm.envi_con_type == 'Window':
-                        row.prop(cm, "envi_export_l1_name")
+                        newrow(layout, "Name:", cm, "envi_export_l1_name")
                         newrow(layout, "Gas Type:", cm, "envi_export_wgaslist_l1")
+                        row = layout.row()
                         row.prop(cm, "envi_export_l1_thi")
 
                     if cm.envi_layer1 != '0':
+                        row = layout.row()
+                        row.label("----------------")
                         row = layout.row()
                         row.label("3rd layer:")
                         row.prop(cm, "envi_layer2")
@@ -206,6 +211,8 @@ class VIMatPanel(bpy.types.Panel):
 
                         if cm.envi_layer2 != '0':
                             row = layout.row()
+                            row.label("----------------")
+                            row = layout.row()
                             row.label("4th layer:")
                             row.prop(cm, "envi_layer3")
                             row = layout.row()
@@ -231,13 +238,16 @@ class VIMatPanel(bpy.types.Panel):
                                         row = layout.row()
 
                             elif cm.envi_layer3 == '2' and cm.envi_con_type == 'Window':
-                                row.prop(cm, "envi_export_l1_name")
+                                newrow(layout, "Name:", cm, "envi_export_l3_name")
                                 row = layout.row()
                                 row.label("Gas Type:")
                                 row.prop(cm, "envi_export_wgaslist_l3")
+                                row = layout.row()
                                 row.prop(cm, "envi_export_l3_thi")
 
                             if cm.envi_layer3 != '0':
+                                row = layout.row()
+                                row.label("----------------")
                                 row = layout.row()
                                 row.label("5th layer:")
                                 row.prop(cm, "envi_layer4")

@@ -423,9 +423,7 @@ class VIEW3D_OT_LiDisplay(bpy.types.Operator):
         if context.scene.get('LiViContext') == 'LiVi Compliance':
             self._handle_comp = bpy.types.SpaceView3D.draw_handler_add(li_compliance, (self, context, connode), 'WINDOW', 'POST_PIXEL')        
         return {'RUNNING_MODAL'}
-        
-    
-        
+                
 class IES_Select(bpy.types.Operator, io_utils.ImportHelper):
     bl_idname = "livi.ies_select"
     bl_label = "Select IES file"

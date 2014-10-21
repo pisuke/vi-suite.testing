@@ -737,7 +737,7 @@ def sockhide(node, lsocknames):
         for outs in [outsock for outsock in node.outputs if outsock.name in lsocknames]:
             node.inputs[outs.name].hide = True if outs.links else False
     except Exception as e:
-        print(e)
+        print('sockhide', e)
 
 def socklink(sock, ng):
     try:
