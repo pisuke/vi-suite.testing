@@ -31,10 +31,11 @@ epversion = "8-2-0"
 addonpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 matpath, epwpath, envi_mats, envi_cons, conlayers  = addonpath+'/EPFiles/Materials/Materials.data', addonpath+'/EPFiles/Weather/', envi_materials(), envi_constructions(), 5
 
-rplatbdict = {'linux': ('/usr/share/radiance/bin', '/usr/local/radiance/bin'), 'win32': (r"C:\Program Files (x86)\Radiance", r"C:\Program Files\Radiance")}
+rplatbdict = {'linux': ('/usr/share/radiance/bin', '/usr/local/radiance/bin'), 'win32': (r"C:\Program Files (x86)\Radiance\bin", r"C:\Program Files\Radiance\bin")}
 rplatldict = {'linux': ('/usr/share/radiance/lib', '/usr/local/radiance/lib'), 'win32': (r"C:\Program Files (x86)\Radiance\lib", r"C:\Program Files\Radiance\lib")}
 eplatbdict = {'linux': ('/usr/local/EnergyPlus-{}'.format(epversion)), 'win32': 'C:\EnergyPlusV{}'.format(epversion), 'darwin': '/Applications/EnergyPlus-{}/bin'.format(epversion)}
 platdict = {'linux': 'linux', 'win32': 'windows', 'darwin': 'mac'}
+evsep = {'linux': ':', 'darwin': ':', 'win32': ';'}
 
 
 if not hasattr(os.environ, 'RAYPATH'):
@@ -45,8 +46,8 @@ if not hasattr(os.environ, 'RAYPATH'):
         shutil.copyfile(os.path.join(eplatbdict[str(sys.platform)], 'Energy+.idd'), '{}/EPFiles/Energy+.idd'.format(addonpath))            
     if not radldir:
         radbdir, radldir = [os.path.join('{}/Radfiles/bin'.format(addonpath), platdict[str(sys.platform)])], ['{}/Radfiles/lib'.format(addonpath)]
-    os.environ["PATH"] = os.environ["PATH"] + ":{}:{}".format(radbdir[0], epdir)
-    os.environ["RAYPATH"] = "{}:{}/Radfiles/lib".format(radldir[0], addonpath)
+    os.environ["PATH"] = os.environ["PATH"] + "{0}{1}{0}{2}".format(evsep[str(sys.platform)], radbdir[0], epdir)
+    os.environ["RAYPATH"] = "{1}{0}{2}/Radfiles/lib".format(evsep[str(sys.platform)], radldir[0], addonpath)
     print(os.environ["PATH"])
 
 #if str(sys.platform) == 'darwin':
