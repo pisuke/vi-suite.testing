@@ -537,7 +537,7 @@ class NODE_OT_ASCImport(bpy.types.Operator, io_utils.ImportHelper):
                 [mstartx, mstarty] = [0, 0] if node.splitmesh else xy
                 [cols, rows, size, nodat] = [eval(lines[i].split()[1]) for i in (0, 1, 4, 5)]
                 vpos += [(mstartx + (size * ci), mstarty + (size * (rows - ri)), (float(h), 0)[h == nodat]) for ri, height in enumerate([line.split() for line in lines[6:]]) for ci, h in enumerate(height)] 
-                faces += [(i, i+1, i+rows + 1, i+rows) for i in range((vlen, 0)[node.splitmesh], len(vpos)-cols) if (i+1)%cols]
+                faces += [(i+1, i, i+rows, i+rows + 1) for i in range((vlen, 0)[node.splitmesh], len(vpos)-cols) if (i+1)%cols]
                 vlen += cols*rows
         
                 if node.splitmesh or file == ascfiles[-1]:  
@@ -1134,13 +1134,13 @@ class NODE_OT_Shadow(bpy.types.Operator):
                     shadres = bm.faces.layers.float['res{}'.format(frame)]  
                     cfaces = [f for f in bm.faces if o.data.materials[f.material_index].mattype == '2']
                     for f in cfaces:
-                        f[shadres] = 100 * (1 - sum([bpy.data.scenes[0].ray_cast(f.calc_center_median() + (0.05 * f.normal), f.calc_center_median() + 10000*direc)[0] for direc in direcs])/len(direcs))
+                        f[shadres] = 100 * (1 - sum([bpy.data.scenes[0].ray_cast(f.calc_center_median() + (simnode.offset * f.normal), f.calc_center_median() + 10000*direc)[0] for direc in direcs])/len(direcs))
                     o['omin'][fi], o['omax'][fi], o['oave'][fi] = min([f[shadres] for f in cfaces]), max([f[shadres] for f in cfaces]), sum([f[shadres] for f in cfaces])/len(cfaces)
                 else:                                                       
                     shadres = bm.verts.layers.float['res{}'.format(frame)]    
                     cverts = [v for v in bm.verts if any([o.data.materials[f.material_index].mattype == '2' for f in v.link_faces])]
                     for v in cverts:
-                        v[shadres] = 100 * (1 - sum([bpy.data.scenes[0].ray_cast(v.co + 0.01*v.normal, v.co + 10000*direc)[0] for direc in direcs])/len(direcs))
+                        v[shadres] = 100 * (1 - sum([bpy.data.scenes[0].ray_cast(v.co + simnode.offset*v.normal, v.co + 10000*direc)[0] for direc in direcs])/len(direcs))
                     o['omin'][fi], o['omax'][fi], o['oave'][fi] = min([v[shadres] for v in cverts]), max([v[shadres] for v in cverts]) , obcalcarea * sum([v[shadres]/vertarea(bm,v) for v in cverts])/len(cverts)
                 simnode['minres']['{}'.format(frame)], simnode['maxres']['{}'.format(frame)], simnode['avres']['{}'.format(frame)] = 0, 100, sum([scene.objects[on]['oave'][fi] for on in scene['shadc']])/len(scene['shadc'])
             bm.transform(o.matrix_world.inverted())

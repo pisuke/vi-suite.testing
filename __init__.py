@@ -31,9 +31,9 @@ epversion = "8-2-0"
 addonpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 matpath, epwpath, envi_mats, envi_cons, conlayers  = addonpath+'/EPFiles/Materials/Materials.data', addonpath+'/EPFiles/Weather/', envi_materials(), envi_constructions(), 5
 
-rplatbdict = {'linux': ('/usr/share/radiance/bin', '/usr/local/radiance/bin'), 'win32': (r"C:\Program Files (x86)\Radiance\bin", r"C:\Program Files\Radiance\bin"), 'darwin': ('/usr/local/radiance/bin')}
-rplatldict = {'linux': ('/usr/share/radiance/lib', '/usr/local/radiance/lib'), 'win32': (r"C:\Program Files (x86)\Radiance\lib", r"C:\Program Files\Radiance\lib"), 'darwin': ('/usr/local/radiance/lib')}
-eplatbdict = {'linux': ('/usr/local/EnergyPlus-{}'.format(epversion)), 'win32': 'C:\EnergyPlusV{}'.format(epversion), 'darwin': '/Applications/EnergyPlus-{}/bin'.format(epversion)}
+rplatbdict = {'linux': ('/usr/share/radiance/bin', '/usr/local/radiance/bin'), 'win32': (r"C:\Program Files (x86)\Radiance\bin", r"C:\Program Files\Radiance\bin"), 'darwin': ('/usr/local/Radiance/bin')}
+rplatldict = {'linux': ('/usr/share/radiance/lib', '/usr/local/radiance/lib'), 'win32': (r"C:\Program Files (x86)\Radiance\lib", r"C:\Program Files\Radiance\lib"), 'darwin': ('/usr/local/Radiance/lib')}
+eplatbdict = {'linux': ('/usr/local/EnergyPlus-{}'.format(epversion)), 'win32': 'C:\EnergyPlusV{}'.format(epversion), 'darwin': '/Applications/EnergyPlus-{}'.format(epversion)}
 platdict = {'linux': 'linux', 'win32': 'windows', 'darwin': 'mac'}
 evsep = {'linux': ':', 'darwin': ':', 'win32': ';'}
 
@@ -125,7 +125,8 @@ def tupdate(self, context):
         
 def wupdate(self, context):
     o = context.active_object
-    (o.show_wire, o.show_all_edges) = (1, 1) if o and o.type == 'MESH' and context.scene.vi_disp_wire else (0, 0)
+    if o and o.type == 'MESH':
+        (o.show_wire, o.show_all_edges) = (1, 1) if context.scene.vi_disp_wire else (0, 0)
         
 def register():
     bpy.utils.register_module(__name__)

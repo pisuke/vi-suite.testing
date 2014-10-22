@@ -113,16 +113,25 @@ def li_display(simnode, connode, geonode):
                         f.material_index = 11 if faceres > 0 else 19
                 oreslist = [f[sv] for f in bm.faces] if scene['cp'] == '0' else [v[sv] for v in bm.verts]
             else:
+                print('hi1')
                 livires = bm.faces.layers.float['res{}'.format(frame)] if scene['cp'] == '0' else bm.verts.layers.float['res{}'.format(frame)]
+                print('hi2')
                 vals = array([(f[livires] - min(simnode['minres'].values()))/(max(simnode['maxres'].values()) - min(simnode['minres'].values())) for f in bm.faces]) if scene['cp'] == '0' else \
                 ([(sum([vert[livires] for vert in f.verts])/len(f.verts) - min(simnode['minres'].values()))/(max(simnode['maxres'].values()) - min(simnode['minres'].values())) for f in bm.faces])
+                print('hi3')
                 bins = array([0.05*i for i in range(1, 20)])
+                print('hi4')
                 nmatis = digitize(vals, bins)
+                print('hi5')
                 for fi, f in enumerate(bm.faces):
                     f.material_index = nmatis[fi]
+                print('hi6')
                 oreslist = [f[livires] for f in bm.faces] if scene['cp'] == '0' else [v[livires] for v in bm.verts]
             bm.to_mesh(ores.data)
-            [ores.data.polygons[fi].keyframe_insert('material_index', frame=frame) for fi, f in enumerate(bm.faces)]        
+            print('hi7')
+            if scene.fe - scene.fs > 0:
+                [ores.data.polygons[fi].keyframe_insert('material_index', frame=frame) for fi in range(len(bm.faces))] 
+            print('hi8')
             ores['omax'][str(frame)], ores['omin'][str(frame)], ores['oave'][str(frame)] = max(oreslist), min(oreslist), sum(oreslist)/len(oreslist)
         
         bm.free()

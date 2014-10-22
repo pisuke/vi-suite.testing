@@ -433,7 +433,6 @@ class ViLiCNode(bpy.types.Node, ViNodes):
         self['exportstate'] = ''
         self['export'] = 0
         
-
     def draw_buttons(self, context, layout):
         newrow(layout, "Standard:", self, 'analysismenu')
         if self.analysismenu == '0':
@@ -569,7 +568,7 @@ class ViSSNode(bpy.types.Node, ViNodes):
     bl_icon = 'LAMP'
 
     def nodeupdate(self, context):
-        nodecolour(self, self['exportstate'] != [str(x) for x in (self.animmenu, self.startmonth, self.endmonth, self.starthour, self.endhour, self.interval, self.cpoint)])
+        nodecolour(self, self['exportstate'] != [str(x) for x in (self.animmenu, self.startmonth, self.endmonth, self.starthour, self.endhour, self.interval, self.cpoint, self.offset)])
 
     animtype = [('Static', "Static", "Simple static analysis"), ('Geometry', "Geometry", "Animated geometry analysis")]
     animmenu = bpy.props.EnumProperty(name="", description="Animation type", items=animtype, default = 'Static', update = nodeupdate)
@@ -580,6 +579,7 @@ class ViSSNode(bpy.types.Node, ViNodes):
     endmonth = bpy.props.IntProperty(name = '', default = 12, min = 1, max = 12, description = 'End Month', update = nodeupdate)
     cpoint = bpy.props.EnumProperty(items=[("0", "Faces", "Export faces for calculation points"),("1", "Vertices", "Export vertices for calculation points"), ],
             name="", description="Specify the calculation point geometry", default="1", update = nodeupdate)
+    offset = bpy.props.FloatProperty(name="", description="Calc point offset", min=0.001, max=1, default=0.01, update = nodeupdate)
 
     def init(self, context):
         self['nodeid'] = nodeid(self)
@@ -596,12 +596,13 @@ class ViSSNode(bpy.types.Node, ViNodes):
             newrow(layout, 'End hour:', self, "endhour")
             newrow(layout, 'Interval:', self, "interval")
             newrow(layout, 'Result point:', self, "cpoint")
+            newrow(layout, 'Offset:', self, 'offset')
             row = layout.row()
             row.operator("node.shad", text = 'Calculate').nodeid = self['nodeid']
             
     def export(self, scene):
         nodecolour(self, 0)
-        self['exportstate'] = [str(x) for x in (self.animmenu, self.startmonth, self.endmonth, self.starthour, self.endhour, self.interval, self.cpoint)]
+        self['exportstate'] = [str(x) for x in (self.animmenu, self.startmonth, self.endmonth, self.starthour, self.endhour, self.interval, self.cpoint, self.offset)]
         self['minres'], self['maxres'], self['avres'] = {}, {}, {}
         scene['cp'] = self.cpoint
 
@@ -2110,7 +2111,6 @@ class EnViSched(bpy.types.Node, EnViNodes):
         try:
             err = 0
             if self.t2 <= self.t1 and self.t1 < 365:
-                print(self.t1)
                 self.t2 = self.t1 + 1
                 if self.t3 <= self.t2 and self.t2 < 365:
                     self.t3 = self.t2 + 1
@@ -2119,31 +2119,23 @@ class EnViSched(bpy.types.Node, EnViNodes):
             
             tn = (self.t1, self.t2, self.t3, self.t4).index(365) + 1    
             if max((self.t1, self.t2, self.t3, self.t4)[:tn]) != 365:
-                print(max((self.t1, self.t2, self.t3, self.t4)))
-                err = 1
-            
+                err = 1            
             if any([not f for f in (self.f1, self.f2, self.f3, self.f4)[:tn]]):
-                print('err2')
                 err = 1
             if any([not u or len(u.split(';')) != len((self.f1, self.f2, self.f3, self.f4)[i].split(' ')) for i, u in enumerate((self.u1, self.u2, self.u3, self.u4)[:tn])]):
                 err = 1
-                print('err3')
             
             for f in (self.f1, self.f2, self.f3, self.f4)[:tn]:
                 for fd in f.split(' '):
                     if fd and fd.upper() not in ("ALLDAYS", "WEEKDAYS", "WEEKEND", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY", "ALLOTHERDAYS"):
                         err = 1
-                        print('err4')
+
             for u in (self.u1, self.u2, self.u3, self.u4)[:tn]:
                 for uf in u.split(';'):
                     for ud in uf.split(','):
                         if len(ud.split()[0].split(':')) != 2 or int(ud.split()[0].split(':')[0]) not in range(1, 25) or len(ud.split()[0].split(':')) != 2 or not ud.split()[0].split(':')[1].isdigit() or int(ud.split()[0].split(':')[1]) not in range(0, 60):
                             err = 1
-                            print('err5')
-            if err:
-                nodecolour(self, 1)
-            else:
-                nodecolour(self, 0)
+            nodecolour(self, err)
         except:
            nodecolour(self, 1) 
         
