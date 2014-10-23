@@ -622,8 +622,9 @@ class ViWRNode(bpy.types.Node, ViNodes):
     endmonth = bpy.props.IntProperty(name = '', default = 12, min = 1, max = 12, description = 'End Month', update = nodeupdate)
 
     def init(self, context):
-        self.inputs.new('ViLoc', 'Location in')
         self['nodeid'] = nodeid(self)
+        self.inputs.new('ViLoc', 'Location in')        
+        self['exportstate'] = ''
         nodecolour(self, 1)
 
     def draw_buttons(self, context, layout):

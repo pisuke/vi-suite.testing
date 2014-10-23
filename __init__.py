@@ -31,8 +31,8 @@ epversion = "8-2-0"
 addonpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 matpath, epwpath, envi_mats, envi_cons, conlayers  = addonpath+'/EPFiles/Materials/Materials.data', addonpath+'/EPFiles/Weather/', envi_materials(), envi_constructions(), 5
 
-rplatbdict = {'linux': ('/usr/share/radiance/bin', '/usr/local/radiance/bin'), 'win32': (r"C:\Program Files (x86)\Radiance\bin", r"C:\Program Files\Radiance\bin"), 'darwin': ('/usr/local/radiance/bin')}
-rplatldict = {'linux': ('/usr/share/radiance/lib', '/usr/local/radiance/lib'), 'win32': (r"C:\Program Files (x86)\Radiance\lib", r"C:\Program Files\Radiance\lib"), 'darwin': ('/usr/local/radiance/lib')}
+rplatbdict = {'linux': ('/usr/share/radiance/bin', '/usr/local/radiance/bin'), 'win32': (r"C:\Program Files (x86)\Radiance\bin", r"C:\Program Files\Radiance\bin"), 'darwin': ['/usr/local/radiance/bin']}
+rplatldict = {'linux': ('/usr/share/radiance/lib', '/usr/local/radiance/lib'), 'win32': (r"C:\Program Files (x86)\Radiance\lib", r"C:\Program Files\Radiance\lib"), 'darwin': ['/usr/local/radiance/lib']}
 eplatbdict = {'linux': ('/usr/local/EnergyPlus-{}'.format(epversion)), 'win32': 'C:\EnergyPlusV{}'.format(epversion), 'darwin': '/Applications/EnergyPlus-{}'.format(epversion)}
 platdict = {'linux': 'linux', 'win32': 'windows', 'darwin': 'osx'}
 evsep = {'linux': ':', 'darwin': ':', 'win32': ';'}
@@ -48,39 +48,6 @@ if not hasattr(os.environ, 'RAYPATH'):
         radbdir, radldir = [os.path.join('{}/Radfiles/bin'.format(addonpath), platdict[str(sys.platform)])], ['{}/Radfiles/lib'.format(addonpath)]
     os.environ["PATH"] = os.environ["PATH"] + "{0}{1}{0}{2}".format(evsep[str(sys.platform)], radbdir[0], epdir)
     os.environ["RAYPATH"] = "{1}{0}{2}/Radfiles/lib".format(evsep[str(sys.platform)], radldir[0], addonpath)
-    print(os.environ["PATH"])
-
-#if str(sys.platform) == 'darwin':
-#    if not hasattr(os.environ, 'RAYPATH'):
-#        os.environ["PATH"] = os.environ["PATH"] + (":/usr/local/radiance/bin:{}/osx:/Applications/EnergyPlus-{}/bin".format(addonpath, epversion), ":/usr/local/radiance/bin:{}/osx/64:/Applications/EnergyPlus-{}/bin".format(addonpath, epversion))[platform.architecture() == "64bit"] 
-#        os.environ["RAYPATH"] = "/usr/local/radiance/lib:{}/lib".format(addonpath)
-#
-#if str(sys.platform) == 'linux':
-#    if not hasattr(os.environ, 'RAYPATH'):
-#        radldir = [d for d in ('/usr/share/radiance/lib', '/usr/local/radiance/lib') if os.path.isdir(d)]
-#        radbdir = [d for d in ('/usr/share/radiance/bin', '/usr/local/radiance/bin') if os.path.isdir(d)]
-#        epdir = '/usr/local/EnergyPlus-{}'.format(epversion) if os.path.isdir('/usr/local/EnergyPlus-{}'.format(epversion)) else '{}/EPFiles/bin/linux'.format(addonpath)
-#        if epdir == '/usr/local/EnergyPlus-{}'.format(epversion):
-#            shutil.copyfile('/usr/local/EnergyPlus-{}/Energy+.idd'.format(epversion), '{}/EPFiles/Energy+.idd'.format(addonpath))            
-#        if not radldir:
-#            radbdir, radldir = ['{}/Radfiles/bin/linux'.format(addonpath)], ['{}/Radfiles/lib'.format(addonpath)]
-#            print("Cannot find a valid system Radiance directory. Using included Radiance binaries")
-#        os.environ["PATH"] = os.environ["PATH"] + ":{}:{}/linux:{}".format(radbdir[0], addonpath, epdir)
-#        os.environ["RAYPATH"] = "{}:{}/Radfiles/lib".format(radldir[0], addonpath)
-#        print(os.environ["PATH"])
-#elif str(sys.platform) == 'win32':
-#    if not hasattr(os.environ, 'RAYPATH'):
-#        if os.path.isdir(r"C:\Program Files (x86)\Radiance"):
-#            os.environ["PATH"] = os.environ["PATH"] + r";C:\Program Files (x86)\Radiance\bin;{}\windows;C:\EnergyPlusV{}".format(addonpath,epversion)
-#            os.environ["RAYPATH"] = r"C:\Program Files (x86)\Radiance\lib;{}\lib".format(addonpath)
-#        elif os.path.isdir(r"C:\Program Files\Radiance"):
-#            os.environ["PATH"] = os.environ["PATH"] + r";C:\Program Files\Radiance\bin;{}\windows;C:\EnergyPlusV{}".format(addonpath, epversion)
-#            os.environ["RAYPATH"] = "C:\Program Files\Radiance\lib;{}\lib".format(addonpath)
-#        else:
-#            os.environ["PATH"] = os.environ["PATH"] + r";C:\Program Files\Radiance\bin;{}\windows;C:\EnergyPlusV{}".format(addonpath, epversion)
-#            os.environ["RAYPATH"] = "C:\Program Files\Radiance\lib;{}\lib".format(addonpath)
-#            print("Cannot find a valid Radiance directory. Please check that you have Radiance installed in either C:\Program Files(x86) (64bit windows) \
-#or C:\Program Files (32bit windows)")
 
 def matfunc(i):
     matfuncdict = {'0': envi_mats.brick_dat.keys(), '1': envi_mats.stone_dat.keys(), '2': envi_mats.metal_dat.keys(), '3': envi_mats.wood_dat.keys(), '4': envi_mats.gas_dat.keys(),

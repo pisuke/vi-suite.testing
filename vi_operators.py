@@ -248,7 +248,9 @@ class NODE_OT_RadPreview(bpy.types.Operator, io_utils.ExportHelper):
                     for line in rvurun.stderr:
                         if 'view up parallel to view direction' in line.decode():
                             self.report({'ERROR'}, "Camera connot point directly upwards")
-                            return {'CANCELLED'}
+                        if 'X11' in line.decode():
+                            self.report({'ERROR'}, "No X11 display server found. You may need to install XQuartz")
+                            
                     self.report({'ERROR'}, "Something wrong with the Radiance preview. Try rerunning the geometry and context export")
                     return {'CANCELLED'}
                 return {'FINISHED'}    
