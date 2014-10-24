@@ -41,13 +41,13 @@ evsep = {'linux': ':', 'darwin': ':', 'win32': ';'}
 if not hasattr(os.environ, 'RAYPATH'):
     radldir = [d for d in rplatldict[str(sys.platform)] if os.path.isdir(d)]
     radbdir = [d for d in rplatbdict[str(sys.platform)] if os.path.isdir(d)]
-    epdir = eplatbdict[str(sys.platform)] if os.path.isdir(eplatbdict[str(sys.platform)]) else os.path.join('{}/EPFiles/bin'.format(addonpath), platdict[str(sys.platform)])
+    epdir = eplatbdict[str(sys.platform)] if os.path.isdir(eplatbdict[str(sys.platform)]) else os.path.join('{}'.format(addonpath), 'EPFiles', 'bin',  platdict[str(sys.platform)])
     if epdir == eplatbdict[str(sys.platform)]:
-        shutil.copyfile(os.path.join(eplatbdict[str(sys.platform)], 'Energy+.idd'), '{}/EPFiles/Energy+.idd'.format(addonpath))            
+        shutil.copyfile(os.path.join(eplatbdict[str(sys.platform)], 'Energy+.idd'), os.path.join('{}'.format(addonpath), 'EPFiles', 'Energy+.idd'))            
     if not radldir:
-        radbdir, radldir = [os.path.join('{}/Radfiles/bin'.format(addonpath), platdict[str(sys.platform)])], ['{}/Radfiles/lib'.format(addonpath)]
+        radbdir, radldir = [os.path.join('{}'.format(addonpath), 'Radfiles', 'bin', platdict[str(sys.platform)])], [os.path.join('{}'.format(addonpath), 'Radfiles', 'lib')]
     os.environ["PATH"] = os.environ["PATH"] + "{0}{1}{0}{2}".format(evsep[str(sys.platform)], radbdir[0], epdir)
-    os.environ["RAYPATH"] = "{1}{0}{2}/Radfiles/lib".format(evsep[str(sys.platform)], radldir[0], addonpath)
+    os.environ["RAYPATH"] = radldir[0]
 
 def matfunc(i):
     matfuncdict = {'0': envi_mats.brick_dat.keys(), '1': envi_mats.stone_dat.keys(), '2': envi_mats.metal_dat.keys(), '3': envi_mats.wood_dat.keys(), '4': envi_mats.gas_dat.keys(),
