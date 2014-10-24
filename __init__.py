@@ -1,5 +1,5 @@
 bl_info = {
-    "name": "VI-Suite Test",
+    "name": "VI-Suite v02",
     "author": "Ryan Southall",
     "version": (0, 3, 0),
     "blender": (2, 7, 2),
