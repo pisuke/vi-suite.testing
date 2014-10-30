@@ -43,7 +43,6 @@ class NODE_OT_LiGExport(bpy.types.Operator):
             scene.frame_start, bpy.data.node_groups[self.nodeid.split('@')[1]].use_fake_user = 0, 1
             scene.frame_set(0)
             radgexport(self, node)
-#            node.exported = True
             node.bl_label = node.bl_label[1:] if node.bl_label[0] == '*' else node.bl_label
             node.outputs['Geometry out'].hide = False
             return {'FINISHED'}
@@ -199,13 +198,12 @@ class NODE_OT_LiExport(bpy.types.Operator, io_utils.ExportHelper):
             if " " not in bpy.data.filepath:
                 scene.li_compliance = 1 if node.bl_label == 'LiVi Compliance' else 0
                 radcexport(self, node, locnode, geonode)
+                node.export(context)
             else:
-#                    node.outputs['Context out'].hide = True
                 self.report({'ERROR'},"The directory path or Blender filename has a space in it. Please save again without any spaces")
                 return {'FINISHED'}
             return {'FINISHED'}
         else:
-#                node.outputs['Context out'].hide = True
             self.report({'ERROR'},"Save the Blender file before exporting")
             return {'FINISHED'}
 
@@ -222,7 +220,6 @@ class NODE_OT_RadPreview(bpy.types.Operator, io_utils.ExportHelper):
         scene = context.scene
         viparams(scene)
         objmode()
-#        scene.vi_display, scene.sp_disp_panel, scene.li_disp_panel, scene.lic_disp_panel, scene.en_disp_panel, scene.ss_disp_panel, scene.wr_disp_panel = 0, 0, 0, 0, 0, 0, 0
         simnode, frame = bpy.data.node_groups[self.nodeid.split('@')[1]].nodes[self.nodeid.split('@')[0]], scene.frame_current
         connode, geonode =  simnode.export(self.bl_label) 
         if frame not in range(scene.fs, scene.fe + 1):
@@ -292,8 +289,8 @@ class NODE_OT_LiVIGlare(bpy.types.Operator):
                 Popen(pcondcmd, shell = True).communicate()
                 psigncmd = "{0} {1}.glare | psign -h 32 -cb 0 0 0 -cf 40 40 40 | pcompos {3}.temphdr 0 0 - 800 550 > {3}.hdr" .format(self.scene['viparams']['cat'], self.scene['viparams']['filebase'], self.frame, os.path.join(self.scene['viparams']['newdir'], 'glare'+str(self.frame)))
                 Popen(psigncmd, shell = True).communicate()
-                rmcmd = "{} {}.temphdr".format(self.scene['viparams']['rm'], os.path.join(self.scene['viparams']['newdir'], 'glare'+str(self.frame)))                   
-                Popen(rmcmd.split()).communicate()
+                os.remove(os.path.join(self.scene['viparams']['newdir'], 'glare{}.temphdr'.format(self.frame)))
+
                 if  'glare{}.hdr'.format(self.frame) in bpy.data.images:
                     bpy.data.images['glare{}.hdr'.format(self.frame)].reload()
                 else:
@@ -408,10 +405,8 @@ class VIEW3D_OT_LiDisplay(bpy.types.Operator):
         return {'PASS_THROUGH'}
 
     def execute(self, context): 
-#        bpy.types.Scene.vi_disp_3dlevel = 
         scene = context.scene 
-        clearscene(scene, self)
-        
+        clearscene(scene, self)        
         scene.li_disp_count = scene.li_disp_count + 1 if scene.li_disp_count < 10 else 0
         scene.vi_disp_wire = 0
         self.disp = scene.li_disp_count
@@ -422,7 +417,7 @@ class VIEW3D_OT_LiDisplay(bpy.types.Operator):
         self._handle_pointres = bpy.types.SpaceView3D.draw_handler_add(linumdisplay, (self, context, simnode, connode, geonode), 'WINDOW', 'POST_PIXEL')
         self._handle_leg = bpy.types.SpaceView3D.draw_handler_add(li3D_legend, (self, context, simnode, connode, geonode), 'WINDOW', 'POST_PIXEL')
         context.window_manager.modal_handler_add(self)
-        if context.scene.get('LiViContext') == 'LiVi Compliance':
+        if connode and connode.bl_label == 'LiVi Compliance':
             self._handle_comp = bpy.types.SpaceView3D.draw_handler_add(li_compliance, (self, context, connode), 'WINDOW', 'POST_PIXEL')        
         return {'RUNNING_MODAL'}
                 
@@ -547,7 +542,6 @@ class NODE_OT_ASCImport(bpy.types.Operator, io_utils.ImportHelper):
                     me = bpy.data.meshes.new("{} mesh".format(basename)) 
                     me.from_pydata(vpos,[],faces)
                     me.update(calc_edges=True)
-                    dir(me)
                     ob = bpy.data.objects.new(basename, me)
                     ob.location = (ostartx - minstartx, ostarty - minstarty, 0) if node.splitmesh else (0, 0, 0)   # position object at 3d-cursor
                     bpy.context.scene.objects.link(ob) 
@@ -624,8 +618,11 @@ class NODE_OT_EnExport(bpy.types.Operator, io_utils.ExportHelper):
         viparams(scene)
         scene.vi_display, scene.sp_disp_panel, scene.li_disp_panel, scene.lic_disp_panel, scene.en_disp_panel, scene.ss_disp_panel, scene.wr_disp_panel = 0, 0, 0, 0, 0, 0, 0
         node = bpy.data.node_groups[self.nodeid.split('@')[1]].nodes[self.nodeid.split('@')[0]]
+        node.sdoy = datetime.datetime(datetime.datetime.now().year, node.startmonth, 1).timetuple().tm_yday
+        node.edoy = (datetime.date(datetime.datetime.now().year, node.endmonth + (1, -11)[node.endmonth == 12], 1) - datetime.timedelta(days = 1)).timetuple().tm_yday
         locnode = node.inputs['Location in'].links[0].from_node
         shutil.copyfile(locnode.weather, os.path.join(scene['viparams']['newdir'], "in.epw"))
+        print(os.path.dirname(os.path.abspath(os.path.realpath( __file__ ))))
         shutil.copyfile(os.path.join(os.path.dirname(os.path.abspath(os.path.realpath( __file__ ))), "EPFiles", "Energy+.idd"), os.path.join(scene['viparams']['newdir'], "Energy+.idd"))
 
         if bpy.data.filepath:
@@ -649,7 +646,7 @@ class NODE_OT_EnExport(bpy.types.Operator, io_utils.ExportHelper):
             self.report({'ERROR'},"Save the Blender file before exporting")
             return {'FINISHED'}
 
-class NODE_OT_EnSim(bpy.types.Operator, io_utils.ExportHelper):
+class NODE_OT_EnSim(bpy.types.Operator):
     bl_idname = "node.ensim"
     bl_label = "Simulate"
     bl_description = "Run EnergyPlus"
@@ -668,9 +665,9 @@ class NODE_OT_EnSim(bpy.types.Operator, io_utils.ExportHelper):
                         for line in [line for line in resfile.readlines()[::-1] if line.split(',')[0] == '2' and len(line.split(',')) == 9]:  
                             self.simnode.run = int(100 * int(line.split(',')[1])/(self.simnode.dedoy - self.simnode.dsdoy))
                             break
-                    return {'RUNNING_MODAL'}
+                    return {'PASS_THROUGH'}
                 except:
-                    return {'RUNNING_MODAL'} 
+                    return {'PASS_THROUGH'} 
             else:
                 for fname in [fname for fname in os.listdir('.') if fname.split(".")[0] == self.simnode.resname]:                
                     os.remove(os.path.join(scene['viparams']['newdir'], fname))
@@ -685,7 +682,6 @@ class NODE_OT_EnSim(bpy.types.Operator, io_utils.ExportHelper):
                 if 'EnergyPlus Terminated--Error(s) Detected' in self.esimrun.stderr.read().decode() or not [f for f in nfns if f.split(".")[1] == "eso"]:
                     errtext = "There is no results file. Check you have selected results outputs and that there are no errors in the .err file in the Blender text editor." if not [f for f in nfns if f.split(".")[1] == "eso"] else "There was an error in the input IDF file. Check the *.err file in Blender's text editor."
                     self.report({'ERROR'}, errtext)
-                    nodecolour(self.simnode, 0)
                     self.simnode.run = -1
                     return {'CANCELLED'}
                 else:
@@ -694,9 +690,7 @@ class NODE_OT_EnSim(bpy.types.Operator, io_utils.ExportHelper):
                     processf(self, self.simnode)
                     self.report({'INFO'}, "Calculation is finished.") 
                     if self.simnode.outputs[0].links:
-                        socket1, socket2  = self.simnode.outputs[0], self.simnode.outputs[0].links[0].to_socket
-                        bpy.data.node_groups[self.nodeid.split('@')[1]].links.remove(self.simnode.outputs[0].links[0])
-                        bpy.data.node_groups[self.nodeid.split('@')[1]].links.new(socket1, socket2)
+                        self.simnode.outputs[0].links[0].to_node.update()
                     viparams(scene)
                     scene.vi_display, scene.sp_disp_panel, scene.li_disp_panel, scene.lic_disp_panel, scene.en_disp_panel, scene.ss_disp_panel, scene.wr_disp_panel = 0, 0, 0, 0, 0, 0, 0                    
                     return {'FINISHED'}
@@ -712,10 +706,10 @@ class NODE_OT_EnSim(bpy.types.Operator, io_utils.ExportHelper):
         self.simnode = bpy.data.node_groups[self.nodeid.split('@')[1]].nodes[self.nodeid.split('@')[0]]
         self.connode = self.simnode.inputs['Context in'].links[0].from_node
         self.simnode.resfilename = os.path.join(scene['viparams']['newdir'], self.simnode.resname+'.eso')
-        self.simnode.dsdoy, self.simnode.dedoy, self.simnode.run = self.connode.sdoy, self.connode.edoy, 0 # (locnode.startmonthnode.sdoy       
+        self.simnode.dsdoy, self.simnode.dedoy, self.simnode.run = self.connode.sdoy, self.connode.edoy, 0 # (locnode.startmonthnode.sdoy  
         os.chdir(scene['viparams']['newdir'])
-        esimcmd = "EnergyPlus in.idf in.epw" 
-        self.esimrun = Popen(esimcmd.split(), stdout = PIPE, stderr = PIPE)
+        esimcmd = "EnergyPlus" 
+        self.esimrun = Popen(esimcmd.split(), stderr = PIPE, shell = True)
         return {'RUNNING_MODAL'}
 
 class NODE_OT_Chart(bpy.types.Operator, io_utils.ExportHelper):
@@ -1000,7 +994,6 @@ class NODE_OT_WindRose(bpy.types.Operator):
                     wrim = bpy.data.images.new('disp_wind.png', height = h, width = w)
                     wrim.file_format = 'PNG'
                     wrim.filepath = os.path.join(scene['viparams']['newdir'], wrim.name)
-#                    wrim.save()
                 else:
                     wrim = bpy.data.images['disp_wind.png']
                 wrim.pixels = pixels
@@ -1128,11 +1121,10 @@ class NODE_OT_Shadow(bpy.types.Operator):
                 for v in [v for v in cverts]:
                     v[cindex] = ci
                     ci+= 1
-            
+                    
             for fi, frame in enumerate(frange):
                 scene.frame_set(frame)
                 if simnode.cpoint == '0':  
-#                    bm.faces.layers.float.new('res{}'.format(frame))
                     shadres = bm.faces.layers.float['res{}'.format(frame)]  
                     cfaces = [f for f in bm.faces if o.data.materials[f.material_index].mattype == '2']
                     for f in cfaces:
@@ -1150,6 +1142,4 @@ class NODE_OT_Shadow(bpy.types.Operator):
             bm.free()
 
         scene.frame_set(scene.fs)
-
-#        simnode['minres'], simnode['maxres'], simnode['avres'] = {'{}'.format(frame) : 100} * fdiff, [100] * fdiff, [sum([scene.objects[on]['oave'][fi] for on in scene['shadc']])/len(scene['shadc']) for fi in range(fdiff)]
         return {'FINISHED'}

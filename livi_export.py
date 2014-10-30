@@ -270,11 +270,6 @@ def radcexport(export_op, node, locnode, geonode):
                         epwlines = epwfile.readlines()
                         epwyear = epwlines[8].split(",")[0]
                         subprocess.call("epw2wea {} {}".format(locnode.weather, os.path.join(scene['viparams']['newdir'], "{}.wea".format(epwbase[0]))), shell=True)
-#                        with open(os.path.join(scene['viparams']['newdir'], "{}.wea".format(epwbase[0])), "w") as wea:
-#                            wea.write("place {0[1]}\nlatitude {0[6]}\nlongitude {0[7]}\ntime_zone {0[8]}\nsite_elevation {0[9]}weather_data_file_units 1\n".format(epwlines[0].split(",")))
-#                            for epwline in epwlines[8:]:
-#                                if int(epwline.split(",")[1]) in range(node.startmonth, node.endmonth + 1):
-#                                    wea.write("{0[1]} {0[2]} {0[3]} {0[14]} {0[15]} \n".format(epwline.split(",")))
                         subprocess.call("gendaymtx -m 1 {0} {1}.wea > {1}.mtx".format(('', '-O1')[node.analysismenu in ('1', '3')], os.path.join(scene['viparams']['newdir'], epwbase[0])), shell=True)                       
                 else:
                     export_op.report({'ERROR'}, "Not a valid EPW file")
@@ -384,7 +379,7 @@ def createradfile(scene, frame, export_op, connode, geonode):
 
 def createoconv(scene, frame, export_op, **kwargs):
     oconvcmd = "oconv {0}-{1}.rad > {0}-{1}.oct".format(scene['viparams']['filebase'], frame)
-    oconvrun = Popen(oconvcmd, shell = True, stdin = PIPE, stdout=PIPE, stderr=STDOUT).communicate()
+    subprocess.call(oconvcmd, shell = True)
     export_op.report({'INFO'},"Export is finished")
 
 def cyfc1(self):

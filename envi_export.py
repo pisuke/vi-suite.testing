@@ -1,5 +1,5 @@
 import bpy, os, itertools, subprocess, datetime, sys, mathutils, bmesh
-from .vi_func import epentry, objvol, ceilheight, selobj, facearea, boundpoly, rettimes, epschedwrite
+from .vi_func import epentry, objvol, ceilheight, selobj, facearea, boundpoly, rettimes, epschedwrite, selmesh
 dtdf = datetime.date.fromordinal
 
 def enpolymatexport(exp_op, node, locnode, em, ec):
@@ -8,8 +8,7 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
         scene.update()
     en_epw = open(locnode.weather, "r")
     en_idf = open(scene['viparams']['idf_file'], 'w')
-    node.sdoy = datetime.datetime(datetime.datetime.now().year, node.startmonth, 1).timetuple().tm_yday
-    node.edoy = (datetime.date(datetime.datetime.now().year, node.endmonth + (1, -11)[node.endmonth == 12], 1) - datetime.timedelta(days = 1)).timetuple().tm_yday
+    
     try:
         enng = [ng for ng in bpy.data.node_groups if ng.bl_label == 'EnVi Network'][0]
     except:
@@ -33,12 +32,6 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
     paramvs = (node.loc, node.startmonth, '1', node.endmonth, ((datetime.date(datetime.datetime.now().year, node.endmonth + (1, -11)[node.endmonth == 12], 1) - datetime.timedelta(days = 1)).day), "UseWeatherFile", "Yes", "Yes", "No", "Yes", "Yes", "1")
     en_idf.write(epentry('RunPeriod', params, paramvs))
 
-#    en_idf.write("Site:Location,\n")
-#    en_idf.write(es.wea.split("/")[-1].strip('.epw')+",   !- LocationName\n")
-#    en_idf.write(str(scene.envi_export_latitude)+",   !- Latitude {deg}\n")
-#    en_idf.write(str(scene.envi_export_longitude)+",   !- Longitude {deg} [check this value]\n")
-#    en_idf.write(str(scene.envi_export_meridian)+",   !- TimeZone {hr} [supplied by user]\n")
-#    en_idf.write("10.0;   !- Elevation {m} [supplied by user]\n\n")
     for line in en_epw.readlines():
         if line.split(",")[0].upper() == "GROUND TEMPERATURES":
             gtline, gt = line.split(","), []
@@ -160,17 +153,10 @@ def enpolymatexport(exp_op, node, locnode, em, ec):
     params = ('Starting Vertex Position', 'Vertex Entry Direction', 'Coordinate System')
     paramvs = ('UpperRightCorner', 'Counterclockwise', 'World')
     en_idf.write(epentry('GlobalGeometryRules', params, paramvs))
-#    en_idf.write("GlobalGeometryRules,\n" +
-#        "    UpperRightCorner,                                                  !- Starting Vertex Position\n" +
-#        "    Counterclockwise,                                                 !- Vertex Entry Direction\n" +
-#        "    World;                                                            !- Coordinate System\n\n")
 
     en_idf.write("!-   ===========  ALL OBJECTS IN CLASS: SURFACE DEFINITIONS ===========\n\n")
 
     wfrparams = ['Name', 'Surface Type', 'Construction Name', 'Zone Name', 'Outside Boundary Condition', 'Outside Boundary Condition Object', 'Sun Exposure', 'Wind Exposure', 'View Factor to Ground', 'Number of Vertices']
-    hcparams = ('Name', 'Setpoint Temperature Schedule Name', 'Setpoint Temperature Schedule Name')
-    spparams = ('Name', 'Setpoint Temperature Schedule Name')
-#    cspparams = ('Name', 'Setpoint Temperature Schedule Name')
 
     for obj in [obj for obj in bpy.data.objects if obj.layers[1] and obj.type == 'MESH' and obj.envi_type != '0']:
         obm, odv = obj.matrix_world, obj.data.vertices
@@ -346,9 +332,7 @@ def pregeo(op):
                 mats.copy().name = 'en_'+mats.name
 
         selobj(scene, obj)
-        bpy.ops.object.mode_set(mode = "EDIT")
-        bpy.ops.mesh.select_all(action='DESELECT')
-        bpy.ops.object.mode_set(mode = 'OBJECT')
+        selmesh('desel')
         bpy.ops.object.duplicate()
 
         en_obj = scene.objects.active
@@ -365,11 +349,7 @@ def pregeo(op):
             if en_obj.data.materials[poly.material_index].envi_con_type == 'None':
                 poly.select = True
 
-        bpy.ops.object.mode_set(mode = "EDIT")
-        bpy.ops.mesh.delete(type = 'FACE')
-        bpy.ops.mesh.select_all(action='SELECT')
-        bpy.ops.mesh.remove_doubles()
-        bpy.ops.object.mode_set(mode = 'OBJECT')
+        selmesh('delf')
         en_obj.select = False
         bm = bmesh.new()
         bm.from_mesh(en_obj.data)

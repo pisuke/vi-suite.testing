@@ -40,13 +40,10 @@ class Vi3DPanel(bpy.types.Panel):
                     row = layout.row()
                     row.prop(view, "show_only_render")
                     newrow(layout, 'Legend', scene, "vi_leg_display")
-
                     if context.active_object and context.active_object.type == 'MESH':
-                        newrow(layout, 'Draw wire:', scene, 'vi_disp_wire')
-                    
+                        newrow(layout, 'Draw wire:', scene, 'vi_disp_wire')                    
                     if int(context.scene.vi_disp_3d) == 1:
-                        newrow(layout, "3D Level", scene, "vi_disp_3dlevel")
-                        
+                        newrow(layout, "3D Level", scene, "vi_disp_3dlevel")                        
                     newrow(layout, "Transparency", scene, "vi_disp_trans")
 
                     if context.mode != "EDIT":
@@ -55,16 +52,13 @@ class Vi3DPanel(bpy.types.Panel):
                         propdict = OrderedDict([('Enable', "vi_display_rp"), ("Selected only:", "vi_display_sel_only"), ("Visible only:", "vi_display_vis_only"), ("Font size:", "vi_display_rp_fs"), ("Font colour:", "vi_display_rp_fc"), ("Font shadow:", "vi_display_rp_fsh"), ("Position offset:", "vi_display_rp_off")])
                         for prop in propdict.items():
                             newrow(layout, prop[0], scene, prop[1])
-
                         row = layout.row()
                         row.label(text="{:-<60}".format(""))
 
-                    if scene.lic_disp_panel == 1:
-                        
+                    if scene.lic_disp_panel == 1:                        
                         propdict = OrderedDict([("Compliance Panel", "li_compliance"), ("Asessment organisation:", "li_assorg"), ("Assesment individiual:", "li_assind"), ("Job number:", "li_jobno"), ("Project name:", "li_projname")])
                         for prop in propdict.items():
                             newrow(layout, prop[0], scene, prop[1])
-
             newrow(layout, 'Display active', scene, 'vi_display')
 
 class VIMatPanel(bpy.types.Panel):

@@ -11,7 +11,7 @@ except:
     mp = 0
 
 dtdf = datetime.date.fromordinal
-s = 60
+#s = 60
 
 def cmap(cm):
     cmdict = {'hot': 'livi', 'grey': 'shad'}
@@ -24,13 +24,13 @@ def radmat(self, scene):
     radname = self.name.replace(" ", "_")    
     radentry = '# ' + ('plastic', 'glass', 'dielectric', 'translucent', 'mirror', 'light', 'metal', 'antimatter')[int(self.radmatmenu)] + ' material\n' + \
             'void {} {}\n'.format(('plastic', 'glass', 'dielectric', 'trans', 'mirror', 'light', 'metal', 'antimatter')[int(self.radmatmenu)], radname) + \
-           {'0': '0\n0\n5 {0[0]} {0[1]} {0[2]} {1} {2}\n'.format(self.radcolour, self.radspec, self.radrough), 
-            '1': '0\n0\n3 {0[0]} {0[1]} {0[2]}\n'.format(self.radcolour), 
-            '2': '0\n0\n4 {0[0]} {0[1]} {0[2]} {1}\n'.format(self.radcolour, self.radior),
-            '3': '0\n0\n7 {0[0]} {0[1]} {0[2]} {1} {2} {3} {4}\n'.format(self.radcolour, self.radspec, self.radrough, self.radtrans, self.radtranspec), 
-            '4': '0\n0\n3 {0[0]} {0[1]} {0[2]}\n'.format(self.radcolour),
-            '5': '0\n0\n3 {0[0]} {0[1]} {0[2]}\n'.format(self.radcolour), 
-            '6': '0\n0\n5 {0[0]} {0[1]} {0[2]} {1} {2}\n'.format(self.radcolour, self.radspec, self.radrough), 
+           {'0': '0\n0\n5 {0[0]:.3f} {0[1]:.3f} {0[2]:.3f} {1:.3f} {2:.3f}\n'.format(self.radcolour, self.radspec, self.radrough), 
+            '1': '0\n0\n3 {0[0]:.3f} {0[1]:.3f} {0[2]:.3f}\n'.format(self.radcolour), 
+            '2': '0\n0\n5 {0[0]:.3f} {0[1]:.3f} {0[2]:.3f} {1:.3f} 0\n'.format(self.radcolour, self.radior),
+            '3': '0\n0\n7 {0[0]:.3f} {0[1]:.3f} {0[2]:.3f} {1:.3f} {2:.3f} {3:.3f} {4:.3f}\n'.format(self.radcolour, self.radspec, self.radrough, self.radtrans, self.radtranspec), 
+            '4': '0\n0\n3 {0[0]:.3f} {0[1]:.3f} {0[2]:.3f}\n'.format(self.radcolour),
+            '5': '0\n0\n3 {0[0]:.3f} {0[1]:.3f} {0[2]:.3f}\n'.format(self.radcolour), 
+            '6': '0\n0\n5 {0[0]:.3f} {0[1]:.3f} {0[2]:.3f} {1:.3f} {2:.3f}\n'.format(self.radcolour, self.radspec, self.radrough), 
             '7': '1 void\n0\n0\n'}[self.radmatmenu] + '\n'
 
     self['radentry'] = radentry
@@ -278,7 +278,7 @@ def processf(pro_op, node):
                 except:
                     pass
 
-    node['dos'], node['resdict'], node['ctypes'], node['ztypes'], node['zrtypes'], node['ltypes'], node['lrtypes'], node.dsdoy, node.dedoy = dos, resdict, ctypes, ztypes, zrtypes, ltypes, lrtypes, int(resdict[dos][1]), int(resdict[dos][-1])
+    node['dos'], node['resdict'], node['ctypes'], node['ztypes'], node['zrtypes'], node['ltypes'], node['lrtypes'] = dos, resdict, ctypes, ztypes, zrtypes, ltypes, lrtypes
     node['allresdict'] = allresdict
     
 def iprop(iname, idesc, imin, imax, idef):
@@ -578,6 +578,11 @@ def selmesh(sel):
         bpy.ops.mesh.select_non_manifold()
     elif sel == 'desel':
         bpy.ops.mesh.select_all(action='DESELECT')
+    elif sel == 'delf':
+        bpy.ops.mesh.delete(type = 'FACE')
+        bpy.ops.mesh.select_all(action='SELECT')
+        bpy.ops.mesh.remove_doubles()
+        bpy.ops.mesh.select_all(action='DESELECT')
     bpy.ops.object.mode_set(mode = 'OBJECT')
 
 def draw_index(context, leg, mid_x, mid_y, width, height, posis, res):
@@ -728,7 +733,7 @@ def remlink(node, links):
         bpy.data.node_groups[node['nodeid'].split('@')[1]].links.remove(link)
 
 def epentry(header, params, paramvs):
-    return '{}\n'.format(header+(',', '')[header == ''])+'\n'.join([('    ', '')[header == '']+'{:{width}}! - {}'.format(str(pv[0])+(',', ';')[pv[1] == params[-1]], pv[1], width = s + (0, 4)[header == '']) for pv in zip(paramvs, params)]) + ('\n\n', '')[header == '']
+    return '{}\n'.format(header+(',', '')[header == ''])+'\n'.join([('    ', '')[header == '']+'{:{width}}! - {}'.format(str(pv[0])+(',', ';')[pv[1] == params[-1]], pv[1], width = 80 + (0, 4)[header == '']) for pv in zip(paramvs, params)]) + ('\n\n', '')[header == '']
 
 def sockhide(node, lsocknames):
     try:

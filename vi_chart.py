@@ -126,7 +126,3 @@ def chart_disp(plt, dnode, rnodes, Sdate, Edate):
     def plot_graph(*args):
         args[0][0].plot()
         args[0][0].show()
-
-#    p = Process(target=plot_graph, args=([plt],))
-#    p.start()
-#    p.join()

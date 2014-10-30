@@ -48,13 +48,12 @@ def li_calc(calc_op, simnode, connode, geonode, simacc, **kwargs):
                         resfile.write(line.decode())
                 
             if connode.bl_label == 'LiVi Compliance' and connode.analysismenu in ('0', '1'):
-                if connode.analysismenu in ('0', '1'):
-                    svcmd = "rtrace -n {0} -w {1} -h -ov -I -af {2}-{3}.af {2}-{3}.oct  < {2}.rtrace {4}".format(scene['viparams']['nproc'], '-ab 1 -ad 8192 -aa 0 -ar 512 -as 1024 -lw 0.0002', scene['viparams']['filebase'], frame, connode['simalg']) #+" | tee "+lexport.newdir+lexport.fold+self.simlistn[int(lexport.metric)]+"-"+str(frame)+".res"
-                    svrun = Popen(svcmd, shell = True, stdout=PIPE, stderr=STDOUT)                  
-                    with open(os.path.join(scene['viparams']['newdir'],'skyview'+"-"+str(frame)+".res"), 'w') as svresfile:
-                        for sv,line in enumerate(svrun.stdout):
-                            svres[findex][sv] = eval(line.decode())
-                            svresfile.write(line.decode())
+                svcmd = "rtrace -n {0} -w {1} -h -ov -I -af {2}-{3}.af {2}-{3}.oct  < {2}.rtrace {4}".format(scene['viparams']['nproc'], '-ab 1 -ad 8192 -aa 0 -ar 512 -as 1024 -lw 0.0002', scene['viparams']['filebase'], frame, connode['simalg']) #+" | tee "+lexport.newdir+lexport.fold+self.simlistn[int(lexport.metric)]+"-"+str(frame)+".res"
+                svrun = Popen(svcmd, shell = True, stdout=PIPE, stderr=STDOUT)                  
+                with open(os.path.join(scene['viparams']['newdir'],'skyview'+"-"+str(frame)+".res"), 'w') as svresfile:
+                    for sv,line in enumerate(svrun.stdout):
+                        svres[findex][sv] = eval(line.decode())
+                        svresfile.write(line.decode())
 
             if connode.bl_label == 'LiVi CBDM' and int(connode.analysismenu) > 1:
                 if connode.sourcemenu == '1':
@@ -91,20 +90,13 @@ def li_calc(calc_op, simnode, connode, geonode, simacc, **kwargs):
                 if connode.analysismenu in ('2', '4'):
                     with open(os.path.join(scene['viparams']['newdir'], connode['resname']+"-"+str(frame)+".res"), "w") as daresfile:
                         [daresfile.write("{:.2f}\n".format(r)) for r in res[findex]]
-
-#                if connode.analysismenu == '3':
-#                    res = reswatt
-                                  
-#        if not kwargs:           
+          
         resapply(calc_op, res, svres, simnode, connode, geonode, frames)
-#        else:
-#            resapply(calc_op, res, svres, simnode, connode, geonode, [genframe])
         return(res[0])
    
 def resapply(calc_op, res, svres, simnode, connode, geonode, frames):
     scene = bpy.context.scene  
     if connode.analysismenu != '3' or connode.bl_label != 'LiVi CBDM':
-        print(frames)
         for i, f in enumerate(frames):
             simnode['maxres'][str(f)] = numpy.amax(res[i])
             simnode['minres'][str(f)] = numpy.amin(res[i])
@@ -112,6 +104,7 @@ def resapply(calc_op, res, svres, simnode, connode, geonode, frames):
         crits = []
         dfpass = [0 for f in frames]
         edfpass = [0 for f in frames]
+#        lenpoints = geonode['reslen']
         
         for fr, frame in enumerate(frames):
             scene.frame_set(frame)
@@ -125,15 +118,14 @@ def resapply(calc_op, res, svres, simnode, connode, geonode, frames):
                 scene.objects.active = None
                 oareas = o['lisenseareas']
                 oarea = sum(oareas)
-                lenpoints = geonode['reslen']
-
+                
                 if o.get('wattres'):
                     del o['wattres']
                 
                 selobj(scene, o)
                 bm = bmesh.new()
                 bm.from_mesh(o.data)
-                pend, passarea = pstart + lenpoints, 0
+                pend, passarea = pstart + len(o['lisenseareas']), 0
                 mat = [matslot.material for matslot in o.material_slots if matslot.material.mattype == '1'][0]
 
                 if geonode.cpoint == '1':
@@ -311,7 +303,7 @@ def resapply(calc_op, res, svres, simnode, connode, geonode, frames):
                 bpy.ops.object.select_all(action = 'DESELECT')
                 eof, eov, hours, scene.objects.active = sof + len(geo['cfaces']), sov + len(geo['cverts']), len(res[0]), None
                 oarea = sum(geo['lisenseareas'])
-                ofaces = [face for face in geo.data.polygons if geo.data.materials[face.material_index].mattype == '1']
+#                ofaces = [face for face in geo.data.polygons if geo.data.materials[face.material_index].mattype == '1']
                 geo['wattres'] = {str(frame):[0 for x in range(len(res[0]))]}
                 for i in range(hours):
                     if geonode.cpoint == '0':
