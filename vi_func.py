@@ -57,6 +57,8 @@ def viparams(scene):
         os.makedirs(os.path.join(fd, fn))
     if not os.path.isdir(os.path.join(fd, fn, 'obj')):
         os.makedirs(os.path.join(fd, fn, 'obj'))
+    if not os.path.isdir(os.path.join(fd, fn, 'bsdfs')):
+        os.makedirs(os.path.join(fd, fn, 'bsdfs'))
     nd = os.path.join(fd, fn)
     fb, ofb, idf  = os.path.join(nd, fn), os.path.join(nd, 'obj', fn), os.path.join(nd, 'in.idf')
     scene['viparams'] = {'rm': ('rm ', 'del ')[str(sys.platform) == 'win32'], 'cat': ('cat ', 'type ')[str(sys.platform) == 'win32'],

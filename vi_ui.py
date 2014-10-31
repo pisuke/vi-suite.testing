@@ -315,7 +315,7 @@ class VIMatPanel(bpy.types.Panel):
 #                    row.prop(cm, "envi_export_glazeconlist")
 
 class IESPanel(bpy.types.Panel):
-    bl_label = "LiVi IES file"
+    bl_label = "VI Object Properties"
     bl_space_type = "PROPERTIES"
     bl_region_type = "WINDOW"
     bl_context = "data"
@@ -328,8 +328,11 @@ class IESPanel(bpy.types.Panel):
     def draw(self, context):
         layout, lamp = self.layout, context.active_object
         if lamp.type != 'LAMP': 
+            row = layout.row()
+            row.label('Generate BSDF')
+            row.operator("object.gen_bsdf", text="BSDF")
             newrow(layout, 'Light Array', lamp, 'lila')
-        if lamp.type == 'LAMP' or lamp.lila: 
+        elif lamp.type == 'LAMP' or lamp.lila: 
             row = layout.row()
             row.operator("livi.ies_select")
             row.prop(lamp, "ies_name")
@@ -346,7 +349,7 @@ class EnZonePanel(bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        if context.object and context.object.type == 'MESH':
+        if context.mesh:
             return len(context.object.data.materials)
 
     def draw(self, context):

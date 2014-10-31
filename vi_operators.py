@@ -15,7 +15,7 @@ try:
 except:
     mp = 0
 
-from .livi_export import radcexport, radgexport, cyfc1, createoconv, createradfile
+from .livi_export import radcexport, radgexport, cyfc1, createoconv, createradfile, genbsdf
 from .livi_calc  import li_calc, resapply
 from .vi_display import li_display, li_compliance, linumdisplay, spnumdisplay, li3D_legend, viwr_legend
 from .envi_export import enpolymatexport, pregeo
@@ -1142,4 +1142,16 @@ class NODE_OT_Shadow(bpy.types.Operator):
             bm.free()
 
         scene.frame_set(scene.fs)
+        return {'FINISHED'}
+        
+class NODE_OT_GenBSDF(bpy.types.Operator):
+    bl_idname = "object.gen_bsdf"
+    bl_label = "Gen BSDF"
+    bl_description = "Generate a BSDF for the current selected object"
+    bl_register = True
+    bl_undo = True
+    
+    def execute(self, context):
+        o = context.active_object
+        genbsdf(context.scene, self, o)
         return {'FINISHED'}

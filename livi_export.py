@@ -21,9 +21,23 @@ from math import sin, cos, tan, pi
 from subprocess import PIPE, Popen, STDOUT
 from .vi_func import retsky, retobj, retmesh, clearscene, solarPosition, mtx2vals, retobjs, selobj, face_centre, selmesh, vertarea, facearea, li_calcob, radpoints
 
+def genbsdf(scene, export_op, o): 
+    bm = bmesh.new()
+    bm.from_mesh(o.data)  
+    mradfile = ''.join([m.radmat(scene) for m in o.data.materials])                  
+    gradfile = radpoints(o, [face for face in bm.faces if o.data.materials and face.material_index < len(o.data.materials) and o.data.materials[face.material_index]['radentry'].split(' ')[1] != 'antimatter'], 0)
+#    o['bsdf'] =    
+    with open(os.path.join(scene['viparams']['newdir'], 'bsdfs', '{}.xml'.format(o.name)), 'w') as bsdfile:
+        bsdfile.write(Popen('genBSDF +geom meter +forward +backward', shell=True, stdin = PIPE, stdout = PIPE).communicate(input = (mradfile+gradfile).encode('utf-8'))[0].decode())
+    bm.free()
+#    bsdf.stdin = mradfile+gradfile
+#     = bsdf.stdout
+    
+    
+    
 def radgexport(export_op, node, **kwargs):
     scene = bpy.context.scene   
-    if not bpy.context.active_object.layers[scene.active_layer]:
+    if bpy.context.active_object and not bpy.context.active_object.layers[scene.active_layer]:
         export_op.report({'INFO'}, "Active geometry is not on the active layer. You may need to lock layers.")
     scene['liparams'] = {'cp': node.cpoint}
     radfiles = []
@@ -102,7 +116,10 @@ def radgexport(export_op, node, **kwargs):
                 bm.from_mesh(o.data)
                 bm.transform(o.matrix_world)
                 if o.name in scene['livig']:
-                    if not kwargs.get('mo') or (kwargs.get('mo') and o in kwargs['mo']):
+                    if o.get('bsdf'):
+                        gradfile += 'void BSDF {0}\n16 0 {1}.xml 0 0 1 . -rx {2[0]} -ry {2[1]} -rz {2[2]} -t {3[0]} {3[1]} {3[2]}\n0\n0\n\n'.format(o.name, os.path.join(scene['viparams']['newdir'], 'bsdfs', o.name), [r*180/math.pi for r in o.rotation_euler], o.location)    
+
+                    elif not kwargs.get('mo') or (kwargs.get('mo') and o in kwargs['mo']):
                         if not o.get('merr'):                    
                             selobj(scene, o)
                             selmesh('selenm')                        
